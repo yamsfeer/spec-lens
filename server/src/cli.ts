@@ -30,13 +30,13 @@ function parseFlags(args: string[]): { positional: string[]; flags: Record<strin
 
 function printHelp(): void {
   console.log(`
-  specs-viewer - Interactive specification document viewer
+  spec-lens - Interactive specification document viewer
 
   Usage:
-    specs-viewer serve [--port <port>] [--open]
-    specs-viewer add <path> [--name <name>] [--slug <slug>]
-    specs-viewer remove <slug>
-    specs-viewer list
+    spec-lens serve [--port <port>] [--open]
+    spec-lens add <path> [--name <name>] [--slug <slug>]
+    spec-lens remove <slug>
+    spec-lens list
 
   Commands:
     serve    Start the viewer server
@@ -52,7 +52,7 @@ async function runServe(positional: string[], flags: Record<string, string>): Pr
 
   const registry = getRegistry()
   if (registry.projects.length === 0) {
-    console.log('  No projects registered. Use "specs-viewer add <path>" to add one.')
+    console.log('  No projects registered. Use "spec-lens add <path>" to add one.')
   }
 
   await startServer({ port })
@@ -75,7 +75,7 @@ async function runAdd(positional: string[], flags: Record<string, string>): Prom
   const dirPath = positional[0]
   if (!dirPath) {
     console.error('  Error: Please specify a directory path.')
-    console.error('  Usage: specs-viewer add <path>')
+    console.error('  Usage: spec-lens add <path>')
     process.exit(1)
   }
 
@@ -110,7 +110,7 @@ async function runRemove(positional: string[]): Promise<void> {
   const slug = positional[0]
   if (!slug) {
     console.error('  Error: Please specify a project slug.')
-    console.error('  Usage: specs-viewer remove <slug>')
+    console.error('  Usage: spec-lens remove <slug>')
     process.exit(1)
   }
 

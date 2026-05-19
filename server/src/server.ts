@@ -86,7 +86,7 @@ export function startServer(options: ServerOptions): Promise<void> {
       reject(err)
     })
     server.listen(options.port, () => {
-      console.log(`  specs-viewer server running at http://localhost:${options.port}`)
+      console.log(`  spec-lens server running at http://localhost:${options.port}`)
       resolve()
     })
   })

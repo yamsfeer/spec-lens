@@ -1,9 +1,9 @@
 {
-  "name": "specs-viewer",
+  "name": "spec-lens",
   "version": "0.1.0",
   "type": "module",
   "bin": {
-    "specs-viewer": "./dist/server/cli.js"
+    "spec-lens": "./dist/server/cli.js"
   },
   "scripts": {
     "dev": "vite",

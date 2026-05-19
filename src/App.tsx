@@ -53,7 +53,7 @@ export function App() {
           <div style={{ marginBottom: '0.5rem' }}>暂无项目</div>
           <div style={{ fontSize: '13px', color: 'var(--fg-3)' }}>
             使用 <code style={{ background: 'var(--bg-2)', padding: '2px 6px', borderRadius: '4px' }}>
-            specs-viewer add &lt;path&gt;</code> 添加项目
+            spec-lens add &lt;path&gt;</code> 添加项目
           </div>
         </div>
       </div>

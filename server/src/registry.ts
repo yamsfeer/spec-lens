@@ -3,7 +3,7 @@ import path from 'path'
 import os from 'os'
 import type { ProjectRegistry, ProjectRegistryEntry } from './types.js'
 
-const REGISTRY_DIR = path.join(os.homedir(), '.specs-viewer')
+const REGISTRY_DIR = path.join(os.homedir(), '.spec-lens')
 const REGISTRY_PATH = path.join(REGISTRY_DIR, 'projects.json')
 
 function ensureRegistryFile(): void {
