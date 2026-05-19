@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Design System — Token Viewer</title>
+<style>
+  /* ============================================================
+     DESIGN TOKEN VIEWER — HTML TEMPLATE
+     ============================================================
+     This template visualizes a Design System spec document.
+     Data is embedded as a JS object in <script id="design-token-data">.
+     Swap the data object to render a different design system.
+     ============================================================ */
+
+  /* --- Reset & Base --- */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --viewer-bg: #f5f4ed;
+    --viewer-surface: #faf9f5;
+    --viewer-border: #f0eee6;
+    --viewer-border-strong: #e8e6dc;
+    --viewer-text: #141413;
+    --viewer-text-secondary: #5e5d59;
+    --viewer-text-tertiary: #87867f;
+    --viewer-accent: #c96442;
+    --viewer-radius: 8px;
+    --viewer-radius-lg: 12px;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'Anthropic Sans', Arial, system-ui, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    color: var(--viewer-text);
+    background: var(--viewer-bg);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* --- Layout --- */
+  .page-header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: var(--viewer-bg);
+    border-bottom: 1px solid var(--viewer-border);
+    padding: 16px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .page-header h1 {
+    font-family: 'Anthropic Serif', Georgia, serif;
+    font-weight: 500;
+    font-size: 20px;
+    line-height: 1.2;
+  }
+
+  .page-header .meta {
+    font-size: 14px;
+    color: var(--viewer-text-tertiary);
+  }
+
+  .layout {
+    display: flex;
+    min-height: calc(100vh - 57px);
+  }
+
+  /* --- Sidebar Nav --- */
+  .sidebar {
+    width: 240px;
+    flex-shrink: 0;
+    border-right: 1px solid var(--viewer-border);
+    padding: 24px 16px;
+    position: sticky;
+    top: 57px;
+    height: calc(100vh - 57px);
+    overflow-y: auto;
+  }
+
+  .sidebar nav a {
+    display: block;
+    padding: 6px 12px;
+    font-size: 14px;
+    color: var(--viewer-text-secondary);
+    text-decoration: none;
+    border-radius: 6px;
+    transition: background 0.15s, color 0.15s;
+  }
+
+  .sidebar nav a:hover {
+    background: var(--viewer-surface);
+    color: var(--viewer-text);
+  }
+
+  .sidebar nav a.active {
+    background: var(--viewer-border-strong);
+    color: var(--viewer-text);
+    font-weight: 500;
+  }
+
+  /* --- Main Content --- */
+  .content {
+    flex: 1;
+    max-width: 960px;
+    padding: 40px 48px 80px;
+  }
+
+  /* --- Section --- */
+  .section {
+    margin-bottom: 64px;
+  }
+
+  .section-title {
+    font-family: 'Anthropic Serif', Georgia, serif;
+    font-weight: 500;
+    font-size: 32px;
+    line-height: 1.1;
+    margin-bottom: 8px;
+    scroll-margin-top: 80px;
+  }
+
+  .section-desc {
+    font-size: 16px;
+    color: var(--viewer-text-secondary);
+    margin-bottom: 32px;
+    max-width: 640px;
+  }
+
+  /* --- Subsection --- */
+  .subsection {
+    margin-bottom: 40px;
+  }
+
+  .subsection-title {
+    font-family: 'Anthropic Serif', Georgia, serif;
+    font-weight: 500;
+    font-size: 20px;
+    line-height: 1.2;
+    margin-bottom: 16px;
+    scroll-margin-top: 80px;
+  }
+
+  /* --- Color Swatch --- */
+  .color-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+  }
+
+  .color-card {
+    background: var(--viewer-surface);
+    border: 1px solid var(--viewer-border);
+    border-radius: var(--viewer-radius);
+    overflow: hidden;
+    cursor: pointer;
+    transition: box-shadow 0.15s;
+  }
+
+  .color-card:hover {
+    box-shadow: 0 0 0 1px var(--viewer-border-strong);
+  }
+
+  .color-swatch {
+    height: 80px;
+    width: 100%;
+    position: relative;
+  }
+
+  .color-swatch .checkered {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(45deg, #ddd 25%, transparent 25%),
+      linear-gradient(-45deg, #ddd 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #ddd 75%),
+      linear-gradient(-45deg, transparent 75%, #ddd 75%);
+    background-size: 12px 12px;
+    background-position: 0 0, 0 6px, 6px -6px, -6px 0px;
+    z-index: 0;
+  }
+
+  .color-swatch .fill {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+  }
+
+  .color-info {
+    padding: 10px 12px;
+  }
+
+  .color-name {
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 2px;
+  }
+
+  .color-value {
+    font-family: 'Anthropic Mono', monospace;
+    font-size: 12px;
+    color: var(--viewer-text-tertiary);
+  }
+
+  .color-desc {
+    font-size: 12px;
+    color: var(--viewer-text-tertiary);
+    margin-top: 4px;
+    line-height: 1.4;
+  }
+
+  .color-copied {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(20,20,19,0.7);
+    color: #faf9f5;
+    font-size: 12px;
+    font-weight: 500;
+    opacity: 0;
+    transition: opacity 0.2s;
+    pointer-events: none;
+  }
+
+  .color-card.copied .color-copied {
+    opacity: 1;
+  }
+
+  /* --- Typography --- */
+  .type-row {
+    display: flex;
+    align-items: baseline;
+    gap: 24px;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--viewer-border);
+  }
+
+  .type-row:last-child {
+    border-bottom: none;
+  }
+
+  .type-meta {
+    width: 140px;
+    flex-shrink: 0;
+  }
+
+  .type-meta .role {
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 2px;
+  }
+
+  .type-meta .specs {
+    font-size: 11px;
+    color: var(--viewer-text-tertiary);
+    line-height: 1.4;
+  }
+
+  .type-preview {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* --- Spacing --- */
+  .spacing-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 8px 0;
+  }
+
+  .spacing-label {
+    width: 40px;
+    font-size: 13px;
+    font-weight: 500;
+    text-align: right;
+  }
+
+  .spacing-bar-container {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .spacing-bar {
+    height: 24px;
+    background: var(--viewer-accent);
+    border-radius: 4px;
+    opacity: 0.8;
+    transition: opacity 0.15s;
+  }
+
+  .spacing-bar:hover {
+    opacity: 1;
+  }
+
+  .spacing-value {
+    font-family: 'Anthropic Mono', monospace;
+    font-size: 12px;
+    color: var(--viewer-text-tertiary);
+    width: 50px;
+  }
+
+  .spacing-px {
+    font-size: 11px;
+    color: var(--viewer-text-tertiary);
+  }
+
+  /* --- Border Radius --- */
+  .radius-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 16px;
+  }
+
+  .radius-card {
+    text-align: center;
+  }
+
+  .radius-demo {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 8px;
+    background: var(--viewer-surface);
+    border: 2px solid var(--viewer-border-strong);
+  }
+
+  .radius-label {
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 2px;
+  }
+
+  .radius-value {
+    font-family: 'Anthropic Mono', monospace;
+    font-size: 12px;
+    color: var(--viewer-text-tertiary);
+  }
+
+  /* --- Shadows --- */
+  .shadow-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 24px;
+  }
+
+  .shadow-card {
+    background: var(--viewer-surface);
+    border: 1px solid var(--viewer-border);
+    border-radius: var(--viewer-radius);
+    padding: 20px;
+    min-height: 120px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  .shadow-label {
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 4px;
+  }
+
+  .shadow-usage {
+    font-size: 12px;
+    color: var(--viewer-text-tertiary);
+  }
+
+  .shadow-css {
+    font-family: 'Anthropic Mono', monospace;
+    font-size: 11px;
+    color: var(--viewer-text-tertiary);
+    word-break: break-all;
+    line-height: 1.4;
+  }
+
+  /* --- Component Examples --- */
+  .example-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+    padding: 24px;
+    background: var(--viewer-surface);
+    border: 1px solid var(--viewer-border);
+    border-radius: var(--viewer-radius);
+    margin-bottom: 16px;
+  }
+
+  .example-strip.dark {
+    background: #141413;
+    border-color: #30302e;
+  }
+
+  /* Button base */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'Anthropic Sans', Arial, system-ui, sans-serif;
+    font-size: 16px;
+    font-weight: 500;
+    border: none;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .btn-sand {
+    background: #e8e6dc;
+    color: #4d4c48;
+    padding: 8px 12px 8px 8px;
+    border-radius: 8px;
+    box-shadow: #e8e6dc 0px 0px 0px 0px, #d1cfc5 0px 0px 0px 1px;
+  }
+
+  .btn-white {
+    background: #ffffff;
+    color: #141413;
+    padding: 8px 16px 8px 12px;
+    border-radius: 12px;
+  }
+
+  .btn-charcoal {
+    background: #30302e;
+    color: #faf9f5;
+    padding: 8px 12px 8px 8px;
+    border-radius: 8px;
+    box-shadow: #30302e 0px 0px 0px 0px, rgba(176,174,165,0.3) 0px 0px 0px 1px;
+  }
+
+  .btn-brand {
+    background: #c96442;
+    color: #faf9f5;
+    padding: 8px 16px;
+    border-radius: 8px;
+    box-shadow: #c96442 0px 0px 0px 0px, #c96442 0px 0px 0px 1px;
+  }
+
+  .btn-dark-primary {
+    background: #141413;
+    color: #b0aea5;
+    padding: 9.6px 16.8px;
+    border-radius: 12px;
+    border: 1px solid #30302e;
+  }
+
+  /* Card example */
+  .card-example {
+    background: #faf9f5;
+    border: 1px solid #f0eee6;
+    border-radius: 8px;
+    padding: 24px;
+    max-width: 320px;
+  }
+
+  .card-example h3 {
+    font-family: 'Anthropic Serif', Georgia, serif;
+    font-weight: 500;
+    font-size: 25px;
+    line-height: 1.2;
+    margin-bottom: 8px;
+  }
+
+  .card-example p {
+    font-size: 15px;
+    color: #5e5d59;
+    line-height: 1.6;
+  }
+
+  .card-elevated {
+    background: #faf9f5;
+    border: 1px solid #f0eee6;
+    border-radius: 8px;
+    padding: 24px;
+    max-width: 320px;
+    box-shadow: rgba(0,0,0,0.05) 0px 4px 24px;
+  }
+
+  /* --- Responsive --- */
+  @media (max-width: 768px) {
+    .sidebar { display: none; }
+    .content { padding: 24px 20px 60px; }
+    .section-title { font-size: 24px; }
+    .color-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+    .type-row { flex-direction: column; gap: 8px; }
+    .type-meta { width: auto; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="page-header">
+  <h1 id="system-name">Design System</h1>
+  <span class="meta" id="system-meta"></span>
+</header>
+
+<!-- Layout -->
+<div class="layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <nav id="sidebar-nav"></nav>
+  </aside>
+
+  <!-- Content -->
+  <main class="content" id="main-content"></main>
+
+</div>
+
+<!-- ============================================================
+     DATA SOURCE — Swap this object to render a different system
+     ============================================================ -->
+<script id="design-token-data" type="application/json">
+{
+  "name": "Claude (Anthropic)",
+  "version": "1.0",
+  "date": "2026-05-18",
+  "sections": [
+    {
+      "id": "colors-primary",
+      "title": "Primary Colors",
+      "description": "The core identity colors — brand, text, and accent.",
+      "type": "color",
+      "tokens": [
+        { "name": "Anthropic Near Black", "value": "#141413", "description": "Primary text & dark surface" },
+        { "name": "Terracotta Brand", "value": "#c96442", "description": "Core brand, primary CTA" },
+        { "name": "Coral Accent", "value": "#d97757", "description": "Secondary accent, links on dark" }
+      ]
+    },
+    {
+      "id": "colors-semantic",
+      "title": "Semantic Colors",
+      "description": "Functional colors for states and feedback.",
+      "type": "color",
+      "tokens": [
+        { "name": "Error Crimson", "value": "#b53333", "description": "Error states" },
+        { "name": "Focus Blue", "value": "#3898ec", "description": "Input focus rings — only cool color" }
+      ]
+    },
+    {
+      "id": "colors-surface",
+      "title": "Surfaces & Backgrounds",
+      "description": "The layered canvas — parchment, ivory, and dark tones.",
+      "type": "color",
+      "tokens": [
+        { "name": "Parchment", "value": "#f5f4ed", "description": "Primary page background" },
+        { "name": "Ivory", "value": "#faf9f5", "description": "Cards & elevated containers" },
+        { "name": "Pure White", "value": "#ffffff", "description": "Button surfaces, max contrast" },
+        { "name": "Warm Sand", "value": "#e8e6dc", "description": "Button backgrounds, interactive surfaces" },
+        { "name": "Dark Surface", "value": "#30302e", "description": "Dark-theme containers & borders" },
+        { "name": "Deep Dark", "value": "#141413", "description": "Dark-theme page background" }
+      ]
+    },
+    {
+      "id": "colors-neutrals",
+      "title": "Neutrals & Text",
+      "description": "Warm-toned grays — every one has a yellow-brown undertone.",
+      "type": "color",
+      "tokens": [
+        { "name": "Charcoal Warm", "value": "#4d4c48", "description": "Button text on light warm surfaces" },
+        { "name": "Olive Gray", "value": "#5e5d59", "description": "Secondary body text" },
+        { "name": "Stone Gray", "value": "#87867f", "description": "Tertiary text, footnotes" },
+        { "name": "Dark Warm", "value": "#3d3d3a", "description": "Dark text links, emphasized secondary" },
+        { "name": "Warm Silver", "value": "#b0aea5", "description": "Text on dark surfaces" }
+      ]
+    },
+    {
+      "id": "colors-borders",
+      "title": "Borders & Rings",
+      "description": "Gentle containment — cream borders and warm ring shadows.",
+      "type": "color",
+      "tokens": [
+        { "name": "Border Cream", "value": "#f0eee6", "description": "Standard light-theme border" },
+        { "name": "Border Warm", "value": "#e8e6dc", "description": "Prominent borders, dividers" },
+        { "name": "Border Dark", "value": "#30302e", "description": "Standard dark-theme border" },
+        { "name": "Ring Warm", "value": "#d1cfc5", "description": "Button hover/focus ring" },
+        { "name": "Ring Subtle", "value": "#dedc01", "description": "Secondary ring variant" },
+        { "name": "Ring Deep", "value": "#c2c0b6", "description": "Active/pressed ring" }
+      ]
+    },
+    {
+      "id": "typography",
+      "title": "Typography",
+      "description": "Serif for authority, sans for utility. Single weight (500) for all serifs.",
+      "type": "typography",
+      "tokens": [
+        { "role": "Display / Hero", "family": "Anthropic Serif", "fallback": "Georgia", "size": "64px", "weight": 500, "lineHeight": "1.10", "sample": "Thoughtful by design" },
+        { "role": "Section Heading", "family": "Anthropic Serif", "fallback": "Georgia", "size": "52px", "weight": 500, "lineHeight": "1.20", "sample": "The future of AI" },
+        { "role": "Sub-heading Large", "family": "Anthropic Serif", "fallback": "Georgia", "size": "36px", "weight": 500, "lineHeight": "1.30", "sample": "Built for what matters" },
+        { "role": "Sub-heading", "family": "Anthropic Serif", "fallback": "Georgia", "size": "32px", "weight": 500, "lineHeight": "1.10", "sample": "Conversations that count" },
+        { "role": "Sub-heading Small", "family": "Anthropic Serif", "fallback": "Georgia", "size": "25px", "weight": 500, "lineHeight": "1.20", "sample": "Intelligence meets intention" },
+        { "role": "Feature Title", "family": "Anthropic Serif", "fallback": "Georgia", "size": "21px", "weight": 500, "lineHeight": "1.20", "sample": "Extended thinking, visual analysis" },
+        { "role": "Body Large", "family": "Anthropic Sans", "fallback": "Arial", "size": "20px", "weight": 400, "lineHeight": "1.60", "sample": "Claude is an AI assistant that helps you think, write, and create with care." },
+        { "role": "Body Standard", "family": "Anthropic Sans", "fallback": "Arial", "size": "16px", "weight": 400, "lineHeight": "1.60", "sample": "Every interaction is designed to feel calm, considered, and genuinely helpful." },
+        { "role": "Body Small", "family": "Anthropic Sans", "fallback": "Arial", "size": "15px", "weight": 400, "lineHeight": "1.60", "sample": "Compact body text for denser layouts and side panels." },
+        { "role": "Caption", "family": "Anthropic Sans", "fallback": "Arial", "size": "14px", "weight": 400, "lineHeight": "1.43", "sample": "Metadata, descriptions, and supplementary information." },
+        { "role": "Label", "family": "Anthropic Sans", "fallback": "Arial", "size": "12px", "weight": 500, "lineHeight": "1.25", "letterSpacing": "0.12px", "sample": "BADGE • LABEL • TAG" },
+        { "role": "Code", "family": "Anthropic Mono", "fallback": "monospace", "size": "15px", "weight": 400, "lineHeight": "1.60", "letterSpacing": "-0.32px", "sample": "const response = await client.messages.create()" }
+      ]
+    },
+    {
+      "id": "spacing",
+      "title": "Spacing",
+      "description": "8px base unit. Editorial pacing with generous section gaps.",
+      "type": "spacing",
+      "tokens": [
+        { "name": "xs", "value": 4, "unit": "px" },
+        { "name": "sm", "value": 8, "unit": "px" },
+        { "name": "md-s", "value": 10, "unit": "px" },
+        { "name": "md", "value": 12, "unit": "px" },
+        { "name": "lg", "value": 16, "unit": "px" },
+        { "name": "xl", "value": 20, "unit": "px" },
+        { "name": "2xl", "value": 24, "unit": "px" },
+        { "name": "3xl", "value": 30, "unit": "px" }
+      ]
+    },
+    {
+      "id": "radius",
+      "title": "Border Radius",
+      "description": "Softness is core — sharp corners (< 6px) are avoided.",
+      "type": "radius",
+      "tokens": [
+        { "name": "Sharp", "value": "4px", "description": "Minimal inline" },
+        { "name": "Subtle", "value": "6px", "description": "Small buttons" },
+        { "name": "Comfortable", "value": "8px", "description": "Standard buttons, cards" },
+        { "name": "Generous", "value": "12px", "description": "Primary buttons, inputs" },
+        { "name": "Very Rounded", "value": "16px", "description": "Featured containers, video" },
+        { "name": "Highly Rounded", "value": "24px", "description": "Tags, highlighted containers" },
+        { "name": "Maximum", "value": "32px", "description": "Hero containers, media" }
+      ]
+    },
+    {
+      "id": "shadows",
+      "title": "Depth & Elevation",
+      "description": "Ring shadows, not drop shadows. Depth through warm-toned halos.",
+      "type": "shadow",
+      "tokens": [
+        { "name": "Flat (Level 0)", "css": "none", "description": "Parchment background, inline text" },
+        { "name": "Contained (Level 1)", "css": "1px solid #f0eee6", "isBorder": true, "description": "Standard cards, sections" },
+        { "name": "Ring (Level 2)", "css": "0px 0px 0px 1px #d1cfc5", "description": "Interactive cards, buttons, hover" },
+        { "name": "Whisper (Level 3)", "css": "rgba(0,0,0,0.05) 0px 4px 24px", "description": "Elevated feature cards, screenshots" },
+        { "name": "Inset (Level 4)", "css": "inset 0px 0px 0px 1px rgba(0,0,0,0.15)", "description": "Active/pressed button states" }
+      ]
+    },
+    {
+      "id": "components",
+      "title": "Component Examples",
+      "description": "Buttons, cards, and surfaces composed from the tokens above.",
+      "type": "components"
+    }
+  ]
+}
+</script>
+
+<script>
+// ============================================================
+// RENDERER — reads the data and builds the page
+// ============================================================
+
+(function() {
+  const data = JSON.parse(document.getElementById('design-token-data').textContent);
+
+  // Header
+  document.getElementById('system-name').textContent = data.name;
+  document.getElementById('system-meta').textContent = `v${data.version} · ${data.date}`;
+
+  // Sidebar nav
+  const nav = document.getElementById('sidebar-nav');
+  data.sections.forEach(s => {
+    const a = document.createElement('a');
+    a.href = '#' + s.id;
+    a.textContent = s.title;
+    nav.appendChild(a);
+  });
+
+  // Intersection observer for active nav
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        nav.querySelectorAll('a').forEach(a => a.classList.remove('active'));
+        const link = nav.querySelector(`a[href="#${e.target.id}"]`);
+        if (link) link.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-80px 0px -60% 0px' });
+
+  // Main content
+  const main = document.getElementById('main-content');
+
+  data.sections.forEach(section => {
+    const el = document.createElement('section');
+    el.className = 'section';
+    el.id = section.id;
+
+    el.innerHTML = `
+      <h2 class="section-title">${section.title}</h2>
+      <p class="section-desc">${section.description || ''}</p>
+    `;
+
+    switch (section.type) {
+      case 'color':
+        el.appendChild(renderColors(section.tokens));
+        break;
+      case 'typography':
+        el.appendChild(renderTypography(section.tokens));
+        break;
+      case 'spacing':
+        el.appendChild(renderSpacing(section.tokens));
+        break;
+      case 'radius':
+        el.appendChild(renderRadius(section.tokens));
+        break;
+      case 'shadow':
+        el.appendChild(renderShadows(section.tokens));
+        break;
+      case 'components':
+        el.appendChild(renderComponents());
+        break;
+    }
+
+    main.appendChild(el);
+    observer.observe(el);
+  });
+
+  // --- Color renderer ---
+  function renderColors(tokens) {
+    const grid = document.createElement('div');
+    grid.className = 'color-grid';
+
+    tokens.forEach(t => {
+      const card = document.createElement('div');
+      card.className = 'color-card';
+      card.innerHTML = `
+        <div class="color-swatch">
+          <div class="checkered"></div>
+          <div class="fill" style="background:${t.value}"></div>
+          <div class="color-copied">Copied!</div>
+        </div>
+        <div class="color-info">
+          <div class="color-name">${t.name}</div>
+          <div class="color-value">${t.value}</div>
+          ${t.description ? `<div class="color-desc">${t.description}</div>` : ''}
+        </div>
+      `;
+
+      card.addEventListener('click', () => {
+        navigator.clipboard.writeText(t.value).then(() => {
+          card.classList.add('copied');
+          setTimeout(() => card.classList.remove('copied'), 800);
+        });
+      });
+
+      grid.appendChild(card);
+    });
+
+    return grid;
+  }
+
+  // --- Typography renderer ---
+  function renderTypography(tokens) {
+    const container = document.createElement('div');
+
+    tokens.forEach(t => {
+      const row = document.createElement('div');
+      row.className = 'type-row';
+
+      const fontFamily = `'${t.family}', ${t.fallback}`;
+      const sizeNum = parseInt(t.size);
+      const lhNum = parseFloat(t.lineHeight);
+
+      row.innerHTML = `
+        <div class="type-meta">
+          <div class="role">${t.role}</div>
+          <div class="specs">${t.size} / ${t.weight} / ${t.lineHeight}${t.letterSpacing ? ' / ' + t.letterSpacing : ''}</div>
+        </div>
+        <div class="type-preview" style="
+          font-family: ${fontFamily};
+          font-size: ${Math.min(sizeNum, 48)}px;
+          font-weight: ${t.weight};
+          line-height: ${t.lineHeight};
+          ${t.letterSpacing ? 'letter-spacing: ' + t.letterSpacing + ';' : ''}
+          color: var(--viewer-text);
+        ">${t.sample}</div>
+      `;
+
+      container.appendChild(row);
+    });
+
+    return container;
+  }
+
+  // --- Spacing renderer ---
+  function renderSpacing(tokens) {
+    const container = document.createElement('div');
+    const maxVal = Math.max(...tokens.map(t => t.value));
+
+    tokens.forEach(t => {
+      const row = document.createElement('div');
+      row.className = 'spacing-row';
+
+      const pct = (t.value / maxVal) * 100;
+
+      row.innerHTML = `
+        <div class="spacing-label">${t.name}</div>
+        <div class="spacing-bar-container">
+          <div class="spacing-bar" style="width: ${pct}%"></div>
+          <div class="spacing-value">${t.value}${t.unit}</div>
+        </div>
+      `;
+
+      container.appendChild(row);
+    });
+
+    return container;
+  }
+
+  // --- Radius renderer ---
+  function renderRadius(tokens) {
+    const grid = document.createElement('div');
+    grid.className = 'radius-grid';
+
+    tokens.forEach(t => {
+      const card = document.createElement('div');
+      card.className = 'radius-card';
+      card.innerHTML = `
+        <div class="radius-demo" style="border-radius: ${t.value}"></div>
+        <div class="radius-label">${t.name}</div>
+        <div class="radius-value">${t.value}</div>
+      `;
+      grid.appendChild(card);
+    });
+
+    return grid;
+  }
+
+  // --- Shadow renderer ---
+  function renderShadows(tokens) {
+    const grid = document.createElement('div');
+    grid.className = 'shadow-grid';
+
+    tokens.forEach(t => {
+      const card = document.createElement('div');
+      card.className = 'shadow-card';
+      const style = t.isBorder ? `border: ${t.css}` : `box-shadow: ${t.css}`;
+      card.setAttribute('style', style);
+      card.innerHTML = `
+        <div>
+          <div class="shadow-label">${t.name}</div>
+          <div class="shadow-usage">${t.description}</div>
+        </div>
+        <div class="shadow-css">${t.css}</div>
+      `;
+      grid.appendChild(card);
+    });
+
+    return grid;
+  }
+
+  // --- Components renderer (hardcoded for demo) ---
+  function renderComponents() {
+    const container = document.createElement('div');
+
+    // Buttons
+    const btnSection = document.createElement('div');
+    btnSection.className = 'subsection';
+    btnSection.innerHTML = '<h3 class="subsection-title">Buttons</h3>';
+    const btnStrip = document.createElement('div');
+    btnStrip.className = 'example-strip';
+    btnStrip.innerHTML = `
+      <button class="btn btn-sand">Secondary</button>
+      <button class="btn btn-white">White Surface</button>
+      <button class="btn btn-brand">Brand CTA</button>
+      <button class="btn btn-charcoal">Dark Charcoal</button>
+    `;
+    btnSection.appendChild(btnStrip);
+
+    // Dark buttons
+    const btnDark = document.createElement('div');
+    btnDark.className = 'example-strip dark';
+    btnDark.innerHTML = `
+      <button class="btn btn-dark-primary">Dark Primary</button>
+      <button class="btn btn-brand">Brand CTA</button>
+    `;
+    btnSection.appendChild(btnDark);
+    container.appendChild(btnSection);
+
+    // Cards
+    const cardSection = document.createElement('div');
+    cardSection.className = 'subsection';
+    cardSection.innerHTML = '<h3 class="subsection-title">Cards</h3>';
+    const cardRow = document.createElement('div');
+    cardRow.style.cssText = 'display:flex;gap:16px;flex-wrap:wrap;';
+    cardRow.innerHTML = `
+      <div class="card-example">
+        <h3>Contained</h3>
+        <p>Standard card with border containment, 8px radius.</p>
+      </div>
+      <div class="card-elevated">
+        <h3>Elevated</h3>
+        <p>Whisper shadow for feature cards and screenshots.</p>
+      </div>
+    `;
+    cardSection.appendChild(cardRow);
+    container.appendChild(cardSection);
+
+    return container;
+  }
+
+})();
+</script>
+
+</body>
+</html>

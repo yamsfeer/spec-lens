@@ -1,0 +1,1579 @@
+<!doctype html>
+<html lang="zh-CN"><head><script data-od-sandbox-shim="">(function(){
+  function makeStore(){
+    var data = {};
+    var api = {
+      getItem: function(k){ return Object.prototype.hasOwnProperty.call(data, k) ? data[k] : null; },
+      setItem: function(k, v){ data[k] = String(v); },
+      removeItem: function(k){ delete data[k]; },
+      clear: function(){ data = {}; },
+      key: function(i){ return Object.keys(data)[i] || null; }
+    };
+    Object.defineProperty(api, 'length', { get: function(){ return Object.keys(data).length; } });
+    return api;
+  }
+  function tryShim(name){
+    var works = false;
+    try { works = !!window[name] && typeof window[name].getItem === 'function'; void window[name].length; }
+    catch (_) { works = false; }
+    if (works) return;
+    try { Object.defineProperty(window, name, { configurable: true, value: makeStore() }); }
+    catch (_) { try { window[name] = makeStore(); } catch (__) {} }
+  }
+  tryShim('localStorage');
+  tryShim('sessionStorage');
+  document.addEventListener('click', (e) => {
+    if (!e.target || !(e.target instanceof Element)) return;
+    var link = e.target.closest('a[href]');
+    if (!link) return;
+    var href = link.getAttribute('href');
+    if (href === null) return;
+    var isAnchor = href.startsWith('#') || href === '';
+    if (isAnchor) {
+      e.preventDefault();
+      if (href === '' || href === '#') {
+        window.scrollTo({ top: 0 });
+        history.replaceState(null, '', ' ');
+      } else {
+        var targetId = href.slice(1);
+        var target = targetId ? document.getElementById(targetId) : null;
+        if (target) {
+          target.scrollIntoView();
+          location.hash === href && history.replaceState(null, '', ' ');
+          location.hash = href;
+        }
+      }
+    } else if (link.getAttribute('target') === '_blank') {
+      e.preventDefault();
+      let safe = false;
+      try {
+        var url = new URL(href, location.href);
+        safe =
+          url.protocol === 'http:' ||
+          url.protocol === 'https:' ||
+          url.protocol === 'mailto:';
+      } catch (_) {}
+      safe && window.open(href, '_blank', 'noopener,noreferrer');
+    }
+  });
+})();</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Specs Viewer</title>
+<style>
+/* ── Claude Design System Tokens ── */
+:root {
+  --bg: #f5f4ed;
+  --surface: #faf9f5;
+  --fg: #141413;
+  --muted: #5e5d59;
+  --border: #f0eee6;
+  --accent: #c96442;
+  --accent-on: #faf9f5;
+  --accent-hover: #b8593b;
+  --coral: #d97757;
+  --fg-2: #87867f;
+  --fg-3: #b0aea5;
+  --surface-warm: #e8e6dc;
+  --border-strong: #e8e6dc;
+  --dark: #30302e;
+  --error: #b53333;
+  --focus: #3898ec;
+  --success: #16a34a;
+  --warn: #eab308;
+  --font-display: Georgia, 'Iowan Old Style', 'Times New Roman', serif;
+  --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, Monaco, Consolas, monospace;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-pill: 9999px;
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
+  --space-5: 20px; --space-6: 24px; --space-8: 32px;
+  --elev-ring: 0 0 0 1px var(--border);
+  --elev-raised: 0 2px 8px rgba(0,0,0,0.05);
+  --elev-float: 0 8px 32px rgba(0,0,0,0.08);
+  --motion: 180ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* ── Reset ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font: 15px/1.6 var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── App Shell ── */
+.app {
+  display: grid;
+  grid-template-rows: 52px 1fr 28px;
+  grid-template-columns: auto 1fr;
+  height: 100vh;
+}
+
+/* ── Topbar ── */
+.topbar {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: 0 var(--space-4);
+  background: var(--surface);
+  box-shadow: 0 1px 0 var(--border);
+  z-index: 100;
+}
+.topbar-brand {
+  display: flex; align-items: center; gap: var(--space-2);
+  font-family: var(--font-display);
+  font-size: 16px; font-weight: 500; color: var(--fg);
+  white-space: nowrap; cursor: default;
+  letter-spacing: -0.01em;
+}
+.topbar-brand .mark {
+  width: 24px; height: 24px;
+  background: var(--accent);
+  border-radius: 6px;
+  display: grid; place-items: center;
+  color: var(--accent-on); font-size: 13px; font-weight: 600;
+  font-family: var(--font-mono);
+}
+.topbar-search {
+  flex: 0 1 320px;
+  position: relative;
+}
+.topbar-search input {
+  width: 100%;
+  padding: 6px 12px 6px 32px;
+  background: var(--bg);
+  border: none;
+  border-radius: var(--radius-sm);
+  font: 14px/1.4 var(--font-body);
+  color: var(--fg);
+  outline: none;
+  transition: box-shadow var(--motion);
+}
+.topbar-search input::placeholder { color: var(--fg-2); }
+.topbar-search input:focus { box-shadow: 0 0 0 2px var(--focus); }
+.topbar-search .icon {
+  position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+  color: var(--fg-2); font-size: 13px; pointer-events: none;
+}
+.topbar-search .kbd {
+  position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+  font: 11px/1 var(--font-mono); color: var(--fg-2);
+  background: var(--surface-warm); padding: 2px 5px; border-radius: 4px;
+}
+.topbar-views {
+  display: flex; gap: 2px; margin-left: auto;
+  background: var(--bg); border-radius: var(--radius-sm); padding: 2px;
+}
+.topbar-views button {
+  padding: 5px 14px;
+  font: 13px/1.2 var(--font-body);
+  color: var(--muted);
+  background: transparent;
+  border: none; border-radius: 6px;
+  cursor: pointer;
+  transition: all var(--motion);
+  white-space: nowrap;
+}
+.topbar-views button:hover { color: var(--fg); background: var(--surface); }
+.topbar-views button.active {
+  color: var(--accent-on);
+  background: var(--accent);
+  font-weight: 500;
+}
+.topbar-actions { display: flex; gap: var(--space-2); align-items: center; }
+.topbar-actions button {
+  width: 32px; height: 32px;
+  display: grid; place-items: center;
+  background: transparent; border: none; border-radius: var(--radius-sm);
+  color: var(--muted); cursor: pointer; font-size: 16px;
+  transition: all var(--motion);
+}
+.topbar-actions button:hover { color: var(--fg); background: var(--bg); }
+
+/* ── Sidebar ── */
+.sidebar {
+  width: 260px;
+  background: var(--surface);
+  box-shadow: 1px 0 0 var(--border);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  transition: width var(--motion);
+}
+.sidebar.collapsed { width: 0; box-shadow: none; }
+.sidebar-header {
+  padding: var(--space-3) var(--space-4);
+  font: 11px/1 var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--fg-2);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.sidebar-tree { flex: 1; overflow-y: auto; padding: 0 var(--space-2) var(--space-4); }
+.sidebar-tree::-webkit-scrollbar { width: 4px; }
+.sidebar-tree::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 2px; }
+
+.tree-folder { margin-bottom: 2px; }
+.tree-folder-header {
+  display: flex; align-items: center; gap: var(--space-1);
+  padding: 4px var(--space-2);
+  border-radius: 6px;
+  cursor: pointer;
+  font: 13px/1.4 var(--font-body);
+  font-weight: 500;
+  color: var(--muted);
+  transition: all var(--motion);
+  user-select: none;
+}
+.tree-folder-header:hover { color: var(--fg); background: var(--bg); }
+.tree-folder-header .arrow {
+  font-size: 10px; transition: transform var(--motion);
+  width: 14px; text-align: center; flex-shrink: 0;
+}
+.tree-folder.open .arrow { transform: rotate(90deg); }
+.tree-folder-children { display: none; padding-left: 14px; }
+.tree-folder.open .tree-folder-children { display: block; }
+
+.tree-doc {
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: 5px var(--space-2) 5px var(--space-3);
+  border-radius: 6px;
+  cursor: pointer;
+  font: 13px/1.4 var(--font-body);
+  color: var(--muted);
+  transition: all var(--motion);
+}
+.tree-doc:hover { color: var(--fg); background: var(--bg); }
+.tree-doc.active { color: var(--accent); background: color-mix(in oklab, var(--accent) 8%, transparent); font-weight: 500; }
+.tree-doc .dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--fg-2); flex-shrink: 0;
+}
+.tree-doc.active .dot { background: var(--accent); }
+
+.sidebar-relations {
+  border-top: 1px solid var(--border);
+  padding: var(--space-3) var(--space-4);
+}
+.sidebar-relations h4 {
+  font: 11px/1 var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--fg-2);
+  margin-bottom: var(--space-2);
+}
+.rel-item {
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: 3px 0; font: 12px/1.4 var(--font-body); color: var(--muted);
+  cursor: pointer;
+}
+.rel-item:hover { color: var(--accent); }
+.rel-tag {
+  font: 10px/1 var(--font-mono);
+  padding: 2px 5px; border-radius: 4px;
+  background: var(--bg); color: var(--fg-2);
+}
+
+/* ── Content Area ── */
+.content {
+  overflow-y: auto;
+  background: var(--bg);
+  position: relative;
+}
+.content::-webkit-scrollbar { width: 6px; }
+.content::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
+.view { display: none; height: 100%; }
+.view.active { display: flex; flex-direction: column; }
+
+/* ── Breadcrumb ── */
+.breadcrumb {
+  padding: var(--space-2) var(--space-6);
+  font: 12px/1.4 var(--font-body);
+  color: var(--fg-2);
+  display: flex; align-items: center; gap: var(--space-1);
+  background: var(--surface);
+  box-shadow: 0 1px 0 var(--border);
+  flex-shrink: 0;
+}
+.breadcrumb span { cursor: pointer; transition: color var(--motion); }
+.breadcrumb span:hover { color: var(--accent); }
+.breadcrumb .sep { color: var(--fg-2); opacity: 0.5; cursor: default; }
+.breadcrumb .current { color: var(--fg); font-weight: 500; cursor: default; }
+
+/* ── Document View ── */
+.doc-view { padding: var(--space-8) var(--space-6) 80px; max-width: 860px; }
+.doc-frontmatter {
+  display: flex; gap: var(--space-2); margin-bottom: var(--space-4); flex-wrap: wrap;
+}
+.fm-badge {
+  font: 11px/1 var(--font-mono);
+  padding: 3px 8px; border-radius: 4px;
+  background: var(--surface-warm); color: var(--muted);
+}
+.fm-badge.status { background: color-mix(in oklab, var(--success) 10%, transparent); color: var(--success); }
+
+.doc-view h1 {
+  font: 500 36px/1.2 var(--font-display);
+  color: var(--fg);
+  margin-bottom: var(--space-4);
+  letter-spacing: -0.01em;
+}
+.doc-view h2 {
+  font: 500 24px/1.3 var(--font-display);
+  color: var(--fg);
+  margin: var(--space-8) 0 var(--space-3);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+.doc-view h3 {
+  font: 500 18px/1.4 var(--font-display);
+  color: var(--fg);
+  margin: var(--space-6) 0 var(--space-2);
+}
+.doc-view p {
+  font: 400 15px/1.7 var(--font-body);
+  color: var(--muted);
+  margin-bottom: var(--space-4);
+  max-width: 68ch;
+}
+.doc-view a {
+  color: var(--coral);
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 3px;
+  transition: color var(--motion);
+}
+.doc-view a:hover { color: var(--accent); }
+.doc-view a.broken {
+  color: var(--error);
+  text-decoration-style: dashed;
+}
+
+/* ── ER Table Card ── */
+.er-card {
+  background: var(--surface);
+  border-radius: var(--radius-md);
+  box-shadow: var(--elev-ring), var(--elev-raised);
+  margin: var(--space-4) 0;
+  overflow: hidden;
+}
+.er-card-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface);
+  cursor: pointer;
+  user-select: none;
+}
+.er-card-header:hover { background: var(--bg); }
+.er-card-name {
+  font: 500 14px/1.2 var(--font-mono);
+  color: var(--fg);
+}
+.er-card-schema {
+  font: 12px/1 var(--font-mono);
+  color: var(--fg-2);
+  background: var(--bg);
+  padding: 2px 6px; border-radius: 4px;
+}
+.er-card-body { padding: 0 var(--space-4) var(--space-3); }
+.er-col {
+  display: grid;
+  grid-template-columns: 140px 90px 40px 50px 1fr;
+  gap: var(--space-2);
+  padding: 3px 0;
+  font: 13px/1.3 var(--font-mono);
+  color: var(--muted);
+  align-items: baseline;
+}
+.er-col .col-name { color: var(--fg); font-weight: 500; }
+.er-col .col-type { color: var(--fg-2); }
+.er-col .col-pk { color: var(--accent); font-size: 10px; font-weight: 700; }
+.er-col .col-fk { color: var(--focus); font-size: 10px; font-weight: 700; cursor: pointer; }
+.er-col .col-fk:hover { text-decoration: underline; }
+.er-col .col-nullable { color: var(--fg-2); font-size: 11px; }
+.er-col .col-default { color: var(--fg-2); font-size: 12px; }
+
+/* ── Type Browser ── */
+.type-card {
+  background: var(--surface);
+  border-radius: var(--radius-md);
+  box-shadow: var(--elev-ring), var(--elev-raised);
+  margin: var(--space-4) 0;
+  overflow: hidden;
+}
+.type-card-header {
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  cursor: pointer; user-select: none;
+}
+.type-card-header:hover { background: var(--bg); }
+.type-card-keyword {
+  font: 11px/1 var(--font-mono);
+  color: var(--accent);
+  background: color-mix(in oklab, var(--accent) 10%, transparent);
+  padding: 2px 6px; border-radius: 4px;
+  text-transform: uppercase;
+}
+.type-card-name {
+  font: 500 14px/1.2 var(--font-mono);
+  color: var(--fg);
+}
+.type-card-body { padding: 0 var(--space-4) var(--space-3); }
+.type-prop {
+  display: grid;
+  grid-template-columns: 140px 1fr 40px;
+  gap: var(--space-2);
+  padding: 3px 0;
+  font: 13px/1.3 var(--font-mono);
+}
+.type-prop .prop-name { color: var(--fg); font-weight: 500; }
+.type-prop .prop-type { color: var(--focus); }
+.type-prop .prop-opt { color: var(--fg-2); font-size: 11px; }
+.type-prop .prop-jsdoc {
+  grid-column: 1 / -1;
+  font: 12px/1.4 var(--font-body);
+  color: var(--fg-2);
+  padding-left: var(--space-2);
+  border-left: 2px solid var(--border);
+}
+
+/* ── Code Block (generic) ── */
+.code-block {
+  background: var(--dark);
+  border-radius: var(--radius-sm);
+  margin: var(--space-4) 0;
+  overflow: hidden;
+}
+.code-block-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: var(--space-2) var(--space-3);
+  font: 11px/1 var(--font-mono);
+  color: var(--fg-3);
+  background: rgba(255,255,255,0.04);
+}
+.code-block pre {
+  padding: var(--space-3) var(--space-4);
+  font: 13px/1.6 var(--font-mono);
+  color: #d4d0c8;
+  overflow-x: auto;
+}
+.code-block .kw { color: var(--coral); }
+.code-block .ty { color: #6cb6ff; }
+.code-block .str { color: var(--success); }
+.code-block .cm { color: var(--fg-2); font-style: italic; }
+
+/* ── ER Diagram View ── */
+.erd-view { height: 100%; position: relative; overflow: hidden; background: var(--bg); }
+.erd-canvas {
+  position: absolute; inset: 0;
+  cursor: grab;
+}
+.erd-canvas.grabbing { cursor: grabbing; }
+.erd-canvas-inner {
+  position: absolute;
+  transform-origin: 0 0;
+  transition: none;
+}
+.erd-svg {
+  position: absolute; inset: 0;
+  pointer-events: none;
+  overflow: visible;
+}
+.erd-svg path {
+  fill: none;
+  stroke: var(--fg-2);
+  stroke-width: 1.5;
+  stroke-dasharray: 6 3;
+  opacity: 0.5;
+}
+.erd-svg path.highlighted { stroke: var(--accent); opacity: 1; stroke-width: 2; stroke-dasharray: none; }
+.erd-table {
+  position: absolute;
+  background: var(--surface);
+  border-radius: var(--radius-md);
+  box-shadow: var(--elev-ring), var(--elev-raised);
+  min-width: 200px;
+  cursor: pointer;
+  transition: box-shadow var(--motion);
+}
+.erd-table:hover { box-shadow: 0 0 0 2px var(--accent), var(--elev-float); }
+.erd-table-head {
+  padding: var(--space-2) var(--space-3);
+  font: 600 13px/1.2 var(--font-mono);
+  color: var(--fg);
+  background: var(--surface-warm);
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+}
+.erd-table-cols { padding: var(--space-2) var(--space-3); }
+.erd-table-col {
+  font: 12px/1.5 var(--font-mono);
+  color: var(--muted);
+  display: flex; gap: var(--space-2);
+}
+.erd-table-col .name { color: var(--fg); font-weight: 500; min-width: 80px; }
+.erd-table-col .badge {
+  font-size: 9px; font-weight: 700; padding: 0 3px;
+  border-radius: 2px; line-height: 1.6;
+}
+.erd-table-col .badge.pk { background: color-mix(in oklab, var(--accent) 15%, transparent); color: var(--accent); }
+.erd-table-col .badge.fk { background: color-mix(in oklab, var(--focus) 15%, transparent); color: var(--focus); }
+.erd-legend {
+  position: absolute; top: var(--space-4); right: var(--space-4);
+  background: var(--surface); border-radius: var(--radius-sm);
+  box-shadow: var(--elev-ring), var(--elev-raised);
+  padding: var(--space-3) var(--space-4);
+  font: 12px/1.6 var(--font-body);
+  color: var(--muted);
+  z-index: 10;
+}
+.erd-legend dt { display: flex; align-items: center; gap: var(--space-2); margin-bottom: 2px; }
+.erd-legend .line-sample { width: 24px; height: 2px; border-radius: 1px; }
+
+/* ── API Browser ── */
+.api-view { display: flex; height: 100%; }
+.api-sidebar {
+  width: 280px; flex-shrink: 0;
+  background: var(--surface);
+  box-shadow: 1px 0 0 var(--border);
+  overflow-y: auto;
+  padding: var(--space-3) 0;
+}
+.api-group { margin-bottom: var(--space-2); }
+.api-group-header {
+  padding: var(--space-2) var(--space-4);
+  font: 11px/1 var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--fg-2);
+}
+.api-endpoint {
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: 5px var(--space-4);
+  cursor: pointer;
+  transition: all var(--motion);
+}
+.api-endpoint:hover { background: var(--bg); }
+.api-endpoint.active { background: color-mix(in oklab, var(--accent) 8%, transparent); }
+.api-method {
+  font: 10px/1 var(--font-mono); font-weight: 700;
+  padding: 2px 5px; border-radius: 3px;
+  min-width: 36px; text-align: center;
+}
+.api-method.get { background: color-mix(in oklab, var(--success) 12%, transparent); color: var(--success); }
+.api-method.post { background: color-mix(in oklab, var(--focus) 12%, transparent); color: var(--focus); }
+.api-method.patch { background: color-mix(in oklab, var(--warn) 12%, transparent); color: #a1850a; }
+.api-path { font: 12px/1.2 var(--font-mono); color: var(--muted); }
+.api-endpoint.active .api-path { color: var(--accent); }
+
+.api-detail {
+  flex: 1; overflow-y: auto;
+  padding: var(--space-6);
+}
+.api-detail-header { margin-bottom: var(--space-6); }
+.api-detail-method {
+  font: 700 14px/1 var(--font-mono);
+  padding: 4px 10px; border-radius: 6px;
+  display: inline-block; margin-bottom: var(--space-2);
+}
+.api-detail-path {
+  font: 500 20px/1.3 var(--font-mono);
+  color: var(--fg);
+  word-break: break-all;
+}
+.api-section {
+  margin-bottom: var(--space-6);
+}
+.api-section h3 {
+  font: 500 14px/1.2 var(--font-body);
+  color: var(--fg);
+  margin-bottom: var(--space-3);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.api-type-card {
+  background: var(--surface);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--elev-ring);
+  padding: var(--space-3) var(--space-4);
+}
+.api-type-row {
+  display: flex; gap: var(--space-2);
+  font: 13px/1.6 var(--font-mono);
+  padding: 2px 0;
+}
+.api-type-row .field { color: var(--fg); font-weight: 500; min-width: 120px; }
+.api-type-row .type { color: var(--focus); }
+.api-type-row .opt { color: var(--fg-2); }
+
+/* ── Knowledge Graph ── */
+.graph-view { height: 100%; position: relative; overflow: hidden; background: var(--bg); }
+.graph-canvas { position: absolute; inset: 0; }
+.graph-canvas-inner { position: absolute; transform-origin: 0 0; }
+.graph-svg { position: absolute; inset: 0; pointer-events: none; overflow: visible; }
+.graph-svg line {
+  stroke: var(--fg-2); stroke-width: 1; opacity: 0.3;
+}
+.graph-svg line.highlighted { stroke: var(--accent); opacity: 1; stroke-width: 2; }
+.graph-node {
+  position: absolute;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--motion);
+  white-space: nowrap;
+}
+.graph-node:hover { transform: scale(1.05); z-index: 10; }
+.graph-node.doc {
+  background: var(--surface);
+  box-shadow: var(--elev-ring), var(--elev-raised);
+  font: 500 13px/1.2 var(--font-body);
+  color: var(--fg);
+}
+.graph-node.table {
+  background: color-mix(in oklab, var(--accent) 8%, var(--surface));
+  box-shadow: var(--elev-ring);
+  font: 500 12px/1.2 var(--font-mono);
+  color: var(--accent);
+}
+.graph-node.type {
+  background: color-mix(in oklab, var(--focus) 8%, var(--surface));
+  box-shadow: var(--elev-ring);
+  font: 500 12px/1.2 var(--font-mono);
+  color: var(--focus);
+  border-radius: var(--radius-pill);
+}
+.graph-node.highlighted {
+  box-shadow: 0 0 0 2px var(--accent), var(--elev-float);
+}
+.graph-filters {
+  position: absolute; top: var(--space-4); left: var(--space-4);
+  display: flex; gap: var(--space-2);
+  z-index: 10;
+}
+.graph-filter {
+  font: 12px/1 var(--font-body);
+  padding: 5px 12px; border-radius: var(--radius-pill);
+  background: var(--surface);
+  box-shadow: var(--elev-ring);
+  border: none; cursor: pointer;
+  color: var(--muted);
+  transition: all var(--motion);
+}
+.graph-filter:hover { color: var(--fg); }
+.graph-filter.active { background: var(--accent); color: var(--accent-on); }
+
+/* ── Status Bar ── */
+.statusbar {
+  grid-column: 1 / -1;
+  display: flex; align-items: center; gap: var(--space-4);
+  padding: 0 var(--space-4);
+  background: var(--surface);
+  box-shadow: 0 -1px 0 var(--border);
+  font: 12px/1 var(--font-mono);
+  color: var(--fg-2);
+}
+.statusbar .dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  display: inline-block; margin-right: 4px;
+}
+.statusbar .dot.green { background: var(--success); }
+.statusbar .sep { opacity: 0.3; }
+
+/* ── Search Dialog ── */
+.search-overlay {
+  position: fixed; inset: 0;
+  background: rgba(20,20,19,0.4);
+  z-index: 1000;
+  display: none; place-items: start center;
+  padding-top: 15vh;
+}
+.search-overlay.open { display: grid; }
+.search-dialog {
+  width: 560px; max-width: 90vw;
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--elev-float), 0 0 0 1px var(--border);
+  overflow: hidden;
+}
+.search-dialog input {
+  width: 100%;
+  padding: var(--space-4) var(--space-5);
+  font: 16px/1.4 var(--font-body);
+  color: var(--fg);
+  background: transparent;
+  border: none; outline: none;
+}
+.search-dialog input::placeholder { color: var(--fg-2); }
+.search-results {
+  max-height: 400px; overflow-y: auto;
+  border-top: 1px solid var(--border);
+}
+.search-result {
+  padding: var(--space-3) var(--space-5);
+  cursor: pointer;
+  transition: background var(--motion);
+}
+.search-result:hover { background: var(--bg); }
+.search-result .doc-name {
+  font: 12px/1 var(--font-mono); color: var(--fg-2);
+  margin-bottom: 2px;
+}
+.search-result .match {
+  font: 14px/1.4 var(--font-body); color: var(--fg);
+}
+.search-result .match mark {
+  background: color-mix(in oklab, var(--accent) 20%, transparent);
+  color: var(--accent); border-radius: 2px; padding: 0 1px;
+}
+
+/* ── Responsive ── */
+@media (max-width: 1024px) {
+  .sidebar { width: 220px; }
+  .doc-view { padding: var(--space-6) var(--space-5) 80px; }
+  .api-sidebar { width: 240px; }
+}
+@media (max-width: 768px) {
+  .app { grid-template-columns: 1fr; }
+  .sidebar { display: none; position: fixed; top: 52px; left: 0; bottom: 28px; z-index: 50; width: 280px; }
+  .sidebar.open { display: flex; flex-direction: column; box-shadow: 4px 0 24px rgba(0,0,0,0.1), 1px 0 0 var(--border); }
+  .topbar-views button .view-label-full { display: none; }
+  .topbar-views button .view-label-short { display: inline; }
+  .doc-view { padding: var(--space-5) var(--space-5) 80px; max-width: 100%; }
+  .doc-view h1 { font-size: 28px; }
+  .doc-view h2 { font-size: 20px; }
+  .er-col { grid-template-columns: 100px 70px 30px 40px 1fr; font-size: 12px; }
+  .api-view { flex-direction: column; }
+  .api-sidebar { width: 100%; height: 200px; box-shadow: 0 1px 0 var(--border); }
+  .type-prop { grid-template-columns: 100px 1fr 30px; }
+  .erd-legend { display: none; }
+  .graph-filters { flex-wrap: wrap; }
+  .search-dialog { margin: 0 var(--space-3); }
+}
+@media (min-width: 769px) {
+  .topbar-views button .view-label-short { display: none; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- Topbar -->
+  <header class="topbar">
+    <div class="topbar-brand">
+      <div class="mark">S</div>
+      Specs Viewer
+    </div>
+    <div class="topbar-search">
+      <span class="icon">🔍</span>
+      <input type="text" id="searchInput" placeholder="搜索文档、类型、表..." readonly="">
+      <span class="kbd">⌘K</span>
+    </div>
+    <nav class="topbar-views" id="viewTabs">
+      <button class="active" data-view="doc">文档</button>
+      <button data-view="erd">ER 图</button>
+      <button data-view="api">API</button>
+      <button data-view="graph">图谱</button>
+    </nav>
+    <div class="topbar-actions">
+      <button id="sidebarToggle" title="切换侧边栏">☰</button>
+    </div>
+  </header>
+
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <span>footx-app/specs</span>
+    </div>
+    <div class="sidebar-tree">
+      <div class="tree-folder open" data-folder="prd">
+        <div class="tree-folder-header"><span class="arrow">▶</span> PRD</div>
+        <div class="tree-folder-children">
+          <div class="tree-doc" data-doc="prd"><span class="dot"></span>PRD.md</div>
+        </div>
+      </div>
+      <div class="tree-folder open" data-folder="uiux">
+        <div class="tree-folder-header"><span class="arrow">▶</span> UIUX</div>
+        <div class="tree-folder-children">
+          <div class="tree-doc" data-doc="interaction"><span class="dot"></span>interaction-spec.md</div>
+        </div>
+      </div>
+      <div class="tree-folder open" data-folder="arch">
+        <div class="tree-folder-header"><span class="arrow">▶</span> Architecture</div>
+        <div class="tree-folder-children">
+          <div class="tree-doc" data-doc="system-design"><span class="dot"></span>system-design.md</div>
+        </div>
+      </div>
+      <div class="tree-folder open" data-folder="contract">
+        <div class="tree-folder-header"><span class="arrow">▶</span> Contract</div>
+        <div class="tree-folder-children">
+          <div class="tree-doc active" data-doc="db-schema"><span class="dot"></span>database-schema.md</div>
+          <div class="tree-doc" data-doc="api-contract"><span class="dot"></span>api-contract.md</div>
+        </div>
+      </div>
+    </div>
+    <div class="sidebar-relations">
+      <h4>相关关系</h4>
+      <div class="rel-item"><span class="rel-tag">FK</span> orders.user_id → users</div>
+      <div class="rel-item"><span class="rel-tag">FK</span> order_items.order_id → orders</div>
+      <div class="rel-item"><span class="rel-tag">FK</span> order_items.product_id → products</div>
+      <div class="rel-item"><span class="rel-tag">REF</span> api-contract → User</div>
+    </div>
+  </aside>
+
+  <!-- Content -->
+  <main class="content" id="content">
+    <!-- Document View -->
+    <div class="view active" id="view-doc">
+      <div class="breadcrumb">
+        <span>Contract</span>
+        <span class="sep">/</span>
+        <span class="current">database-schema.md</span>
+      </div>
+      <div class="doc-view">
+        <div class="doc-frontmatter">
+          <span class="fm-badge">v0.2-draft</span>
+          <span class="fm-badge">2026-05-15</span>
+          <span class="fm-badge status">设计中</span>
+        </div>
+
+        <h1>数据库 Schema 定义</h1>
+        <p>本文档定义了 footx-app 的核心数据库结构。所有表使用 PostgreSQL 16+，采用 UUID 主键和 TIMESTAMPTZ 时间戳。参见 <a href="#">PRD.md#数据模型</a> 和 <a href="#">api-contract.md#数据类型</a>。</p>
+        <p>迁移脚本遵循 <a class="broken" href="./migrations/README.md">migrations/README.md</a> 规范（断链 — 文件尚未创建）。</p>
+
+        <h2>用户表</h2>
+        <p>存储所有注册用户信息。email 字段具有唯一约束，用于登录认证。</p>
+
+        <div class="er-card">
+          <div class="er-card-header">
+            <span class="er-card-name">users</span>
+            <span class="er-card-schema">public</span>
+          </div>
+          <div class="er-card-body">
+            <div class="er-col"><span class="col-name">id</span><span class="col-type">uuid</span><span class="col-pk">PK</span><span class="col-nullable"></span><span class="col-default"></span></div>
+            <div class="er-col"><span class="col-name">email</span><span class="col-type">varchar(255)</span><span class="col-pk"></span><span class="col-nullable">NOT NULL</span><span class="col-default"></span></div>
+            <div class="er-col"><span class="col-name">name</span><span class="col-type">varchar(100)</span><span class="col-pk"></span><span class="col-nullable">NOT NULL</span><span class="col-default"></span></div>
+            <div class="er-col"><span class="col-name">avatar_url</span><span class="col-type">text</span><span class="col-pk"></span><span class="col-nullable"></span><span class="col-default"></span></div>
+            <div class="er-col"><span class="col-name">role</span><span class="col-type">user_role</span><span class="col-pk"></span><span class="col-nullable">NOT NULL</span><span class="col-default">'customer'</span></div>
+            <div class="er-col"><span class="col-name">created_at</span><span class="col-type">timestamptz</span><span class="col-pk"></span><span class="col-nullable">NOT NULL</span><span class="col-default">now()</span></div>
+            <div class="er-col"><span class="col-name">updated_at</span><span class="col-type">timestamptz</span><span class="col-pk"></span><span class="col-nullable">NOT NULL</span><span class="col-default">now()</span></div>
+          </div>
+        </div>
+
+        <h2>产品表</h2>
+        <p>商品目录。price 以分为整数存储（避免浮点精度问题），通过 <a href="#">api-contract.md</a> 的除以 100 转换为元。</p>
+
+        <div class="er-card">
+          <div class="er-card-header">
+            <span class="er-card-name">products</span>
+            <span class="er-card-schema">public</span>
+          </div>
+          <div class="er-card-body">
+            <div class="er-col"><span class="col-name">id</span><span class="col-type">uuid</span><span class="col-pk">PK</span><span class="col-nullable"></span><span class="col-default"></span></div>
+            <div class="er-col"><span class="col-name">name</span><span class="col-type">varchar(200)</span><span class="col-pk"></span><span class="col-nullable">NOT NULL</span><span class="col-default"></span></div>
+            <div class="er-col"><span class="col-name">description</span><span class="col-type">text</span><span class="col-pk"></span><span class="col-nullable"></span><span class="col-default"></span></div>
+            <div class="er-col"><span class="col-name">price_cents</span><span class="col-type">integer</span><span class="col-pk"></span><span class="col-nullable">NOT NULL</span><span class="col-default"></span></div>
+            <div class="er-col"><span class="col-name">stock</span><span class="col-type">integer</span><span class="col-pk"></span><span class="col-nullable">NOT NULL</span><span class="col-default">0</span></div>
+            <div class="er-col"><span class="col-name">category</span><span class="col-type">product_category</span><span class="col-pk"></span><span class="col-nullable">NOT NULL</span><span class="col-default"></span></div>
+            <div class="er-col"><span class="col-name">active</span><span class="col-type">boolean</span><span class="col-pk"></span><span class="col-nullable">NOT NULL</span><span class="col-default">true</span></div>
+            <div class="er-col"><span class="col-name">created_at</span><span class="col-type">timestamptz</span><span class="col-pk"></span><span class="col-nullable">NOT NULL</span><span class="col-default">now()</span></div>
+          </div>
+        </div>
+
+        <h2>订单表</h2>
+        <p>用户订单主表。status 字段使用 <a href="#">user_role</a> 枚举类型追踪订单生命周期。</p>
+
+        <div class="er-card">
+          <div class="er-card-header">
+            <span class="er-card-name">orders</span>
+            <span class="er-card-schema">public</span>
+          </div>
+          <div class="er-card-body">
+            <div class="er-col"><span class="col-name">id</span><span class="col-type">uuid</span><span class="col-pk">PK</span><span class="col-nullable"></span><span class="col-default"></span></div>
+            <div class="er-col"><span class="col-name">user_id</span><span class="col-type">uuid</span><span class="col-pk"></span><span class="col-fk">FK</span><span class="col-nullable">NOT NULL</span><span class="col-default"></span></div>
+            <div class="er-col"><span class="col-name">status</span><span class="col-type">order_status</span><span class="col-pk"></span><span class="col-nullable">NOT NULL</span><span class="col-default">'pending'</span></div>
+            <div class="er-col"><span class="col-name">total_cents</span><span class="col-type">integer</span><span class="col-pk"></span><span class="col-nullable">NOT NULL</span><span class="col-default"></span></div>
+            <div class="er-col"><span class="col-name">created_at</span><span class="col-type">timestamptz</span><span class="col-pk"></span><span class="col-nullable">NOT NULL</span><span class="col-default">now()</span></div>
+            <div class="er-col"><span class="col-name">updated_at</span><span class="col-type">timestamptz</span><span class="col-pk"></span><span class="col-nullable">NOT NULL</span><span class="col-default">now()</span></div>
+          </div>
+        </div>
+
+        <h2>订单项表</h2>
+        <p>订单中的具体商品行项。每条记录关联一个订单和一个产品。</p>
+
+        <div class="er-card">
+          <div class="er-card-header">
+            <span class="er-card-name">order_items</span>
+            <span class="er-card-schema">public</span>
+          </div>
+          <div class="er-card-body">
+            <div class="er-col"><span class="col-name">id</span><span class="col-type">uuid</span><span class="col-pk">PK</span><span class="col-nullable"></span><span class="col-default"></span></div>
+            <div class="er-col"><span class="col-name">order_id</span><span class="col-type">uuid</span><span class="col-pk"></span><span class="col-fk">FK</span><span class="col-nullable">NOT NULL</span><span class="col-default"></span></div>
+            <div class="er-col"><span class="col-name">product_id</span><span class="col-type">uuid</span><span class="col-pk"></span><span class="col-fk">FK</span><span class="col-nullable">NOT NULL</span><span class="col-default"></span></div>
+            <div class="er-col"><span class="col-name">quantity</span><span class="col-type">integer</span><span class="col-pk"></span><span class="col-nullable">NOT NULL</span><span class="col-default"></span></div>
+            <div class="er-col"><span class="col-name">unit_price_cents</span><span class="col-type">integer</span><span class="col-pk"></span><span class="col-nullable">NOT NULL</span><span class="col-default"></span></div>
+          </div>
+        </div>
+
+        <h2>TypeScript 类型定义</h2>
+        <p>与数据库表对应的 TypeScript 接口，用于 API 契约层。详见 <a href="#">api-contract.md</a>。</p>
+
+        <div class="type-card">
+          <div class="type-card-header">
+            <span class="type-card-keyword">interface</span>
+            <span class="type-card-name">User</span>
+          </div>
+          <div class="type-card-body">
+            <div class="type-prop"><span class="prop-name">id</span><span class="prop-type">string</span><span class="prop-opt"></span></div>
+            <div class="type-prop"><span class="prop-name">email</span><span class="prop-type">string</span><span class="prop-opt"></span></div>
+            <div class="type-prop"><span class="prop-name">name</span><span class="prop-type">string</span><span class="prop-opt"></span></div>
+            <div class="type-prop"><span class="prop-name">avatarUrl</span><span class="prop-type">string | null</span><span class="prop-opt">?</span></div>
+            <div class="type-prop"><span class="prop-name">role</span><span class="prop-type">UserRole</span><span class="prop-opt"></span></div>
+            <div class="type-prop"><span class="prop-name">createdAt</span><span class="prop-type">Date</span><span class="prop-opt"></span></div>
+            <div class="type-prop"><span class="prop-name">updatedAt</span><span class="prop-type">Date</span><span class="prop-opt"></span></div>
+          </div>
+        </div>
+
+        <div class="type-card">
+          <div class="type-card-header">
+            <span class="type-card-keyword">interface</span>
+            <span class="type-card-name">Order</span>
+          </div>
+          <div class="type-card-body">
+            <div class="type-prop"><span class="prop-name">id</span><span class="prop-type">string</span><span class="prop-opt"></span></div>
+            <div class="type-prop"><span class="prop-name">userId</span><span class="prop-type">string</span><span class="prop-opt"></span></div>
+            <div class="type-prop"><span class="prop-name">status</span><span class="prop-type">OrderStatus</span><span class="prop-opt"></span></div>
+            <div class="type-prop"><span class="prop-name">totalCents</span><span class="prop-type">number</span><span class="prop-opt"></span></div>
+            <div class="type-prop"><span class="prop-name">items</span><span class="prop-type">OrderItem[]</span><span class="prop-opt"></span></div>
+            <div class="type-prop"><span class="prop-name">createdAt</span><span class="prop-type">Date</span><span class="prop-opt"></span></div>
+          </div>
+        </div>
+
+        <h2>枚举类型</h2>
+        <div class="code-block">
+          <div class="code-block-header"><span>SQL — enum definitions</span></div>
+          <pre><span class="kw">CREATE TYPE</span> user_role <span class="kw">AS ENUM</span> (<span class="str">'customer'</span>, <span class="str">'admin'</span>, <span class="str">'vendor'</span>);
+<span class="kw">CREATE TYPE</span> order_status <span class="kw">AS ENUM</span> (<span class="str">'pending'</span>, <span class="str">'paid'</span>, <span class="str">'shipped'</span>, <span class="str">'delivered'</span>, <span class="str">'cancelled'</span>);
+<span class="kw">CREATE TYPE</span> product_category <span class="kw">AS ENUM</span> (<span class="str">'electronics'</span>, <span class="str">'clothing'</span>, <span class="str">'food'</span>, <span class="str">'home'</span>);</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- ER Diagram View -->
+    <div class="view" id="view-erd">
+      <div class="erd-view" id="erdCanvas">
+        <div class="erd-canvas" id="erdPan">
+          <div class="erd-canvas-inner" id="erdInner" style="transform: translate(60px, 40px);">
+            <svg class="erd-svg" id="erdSvg" width="900" height="600">
+              <!-- users → orders -->
+              <path d="M 110 140 C 110 200, 110 200, 110 230" id="erd-edge-1"></path>
+              <!-- orders → order_items -->
+              <path d="M 180 340 C 300 340, 300 400, 420 400" id="erd-edge-2"></path>
+              <!-- products → order_items -->
+              <path d="M 620 260 C 620 340, 560 400, 560 400" id="erd-edge-3"></path>
+            </svg>
+
+            <div class="erd-table" style="left: 0; top: 0;" data-table="users">
+              <div class="erd-table-head">users</div>
+              <div class="erd-table-cols">
+                <div class="erd-table-col"><span class="name">id</span><span>uuid</span><span class="badge pk">PK</span></div>
+                <div class="erd-table-col"><span class="name">email</span><span>varchar(255)</span><span></span></div>
+                <div class="erd-table-col"><span class="name">name</span><span>varchar(100)</span><span></span></div>
+                <div class="erd-table-col"><span class="name">role</span><span>user_role</span><span></span></div>
+                <div class="erd-table-col"><span class="name">created_at</span><span>timestamptz</span><span></span></div>
+              </div>
+            </div>
+
+            <div class="erd-table" style="left: 0; top: 240;" data-table="orders">
+              <div class="erd-table-head">orders</div>
+              <div class="erd-table-cols">
+                <div class="erd-table-col"><span class="name">id</span><span>uuid</span><span class="badge pk">PK</span></div>
+                <div class="erd-table-col"><span class="name">user_id</span><span>uuid</span><span class="badge fk">FK</span></div>
+                <div class="erd-table-col"><span class="name">status</span><span>order_status</span><span></span></div>
+                <div class="erd-table-col"><span class="name">total_cents</span><span>integer</span><span></span></div>
+                <div class="erd-table-col"><span class="name">created_at</span><span>timestamptz</span><span></span></div>
+              </div>
+            </div>
+
+            <div class="erd-table" style="left: 500; top: 0;" data-table="products">
+              <div class="erd-table-head">products</div>
+              <div class="erd-table-cols">
+                <div class="erd-table-col"><span class="name">id</span><span>uuid</span><span class="badge pk">PK</span></div>
+                <div class="erd-table-col"><span class="name">name</span><span>varchar(200)</span><span></span></div>
+                <div class="erd-table-col"><span class="name">price_cents</span><span>integer</span><span></span></div>
+                <div class="erd-table-col"><span class="name">stock</span><span>integer</span><span></span></div>
+                <div class="erd-table-col"><span class="name">category</span><span>product_category</span><span></span></div>
+                <div class="erd-table-col"><span class="name">active</span><span>boolean</span><span></span></div>
+              </div>
+            </div>
+
+            <div class="erd-table" style="left: 400; top: 370;" data-table="order_items">
+              <div class="erd-table-head">order_items</div>
+              <div class="erd-table-cols">
+                <div class="erd-table-col"><span class="name">id</span><span>uuid</span><span class="badge pk">PK</span></div>
+                <div class="erd-table-col"><span class="name">order_id</span><span>uuid</span><span class="badge fk">FK</span></div>
+                <div class="erd-table-col"><span class="name">product_id</span><span>uuid</span><span class="badge fk">FK</span></div>
+                <div class="erd-table-col"><span class="name">quantity</span><span>integer</span><span></span></div>
+                <div class="erd-table-col"><span class="name">unit_price_cents</span><span>integer</span><span></span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <dl class="erd-legend">
+          <dt><span class="line-sample" style="background:var(--fg-2);"></span> FK 关系</dt>
+          <dt><span class="line-sample" style="background:var(--accent);"></span> 选中关系</dt>
+          <dt style="margin-top:8px; font:11px/1.4 var(--font-body); color:var(--fg-2);">点击表查看关联<br>拖拽画布平移</dt>
+        </dl>
+      </div>
+    </div>
+
+    <!-- API Browser View -->
+    <div class="view" id="view-api">
+      <div class="api-view">
+        <div class="api-sidebar" id="apiSidebar">
+          <div class="api-group">
+            <div class="api-group-header">Auth</div>
+            <div class="api-endpoint active" data-ep="auth-login">
+              <span class="api-method post">POST</span>
+              <span class="api-path">/auth/login</span>
+            </div>
+            <div class="api-endpoint" data-ep="auth-register">
+              <span class="api-method post">POST</span>
+              <span class="api-path">/auth/register</span>
+            </div>
+            <div class="api-endpoint" data-ep="auth-refresh">
+              <span class="api-method post">POST</span>
+              <span class="api-path">/auth/refresh</span>
+            </div>
+          </div>
+          <div class="api-group">
+            <div class="api-group-header">Users</div>
+            <div class="api-endpoint" data-ep="users-list">
+              <span class="api-method get">GET</span>
+              <span class="api-path">/users</span>
+            </div>
+            <div class="api-endpoint" data-ep="users-get">
+              <span class="api-method get">GET</span>
+              <span class="api-path">/users/:id</span>
+            </div>
+            <div class="api-endpoint" data-ep="users-update">
+              <span class="api-method patch">PATCH</span>
+              <span class="api-path">/users/:id</span>
+            </div>
+          </div>
+          <div class="api-group">
+            <div class="api-group-header">Products</div>
+            <div class="api-endpoint" data-ep="products-list">
+              <span class="api-method get">GET</span>
+              <span class="api-path">/products</span>
+            </div>
+            <div class="api-endpoint" data-ep="products-get">
+              <span class="api-method get">GET</span>
+              <span class="api-path">/products/:id</span>
+            </div>
+          </div>
+          <div class="api-group">
+            <div class="api-group-header">Orders</div>
+            <div class="api-endpoint" data-ep="orders-list">
+              <span class="api-method get">GET</span>
+              <span class="api-path">/orders</span>
+            </div>
+            <div class="api-endpoint" data-ep="orders-create">
+              <span class="api-method post">POST</span>
+              <span class="api-path">/orders</span>
+            </div>
+            <div class="api-endpoint" data-ep="orders-get">
+              <span class="api-method get">GET</span>
+              <span class="api-path">/orders/:id</span>
+            </div>
+          </div>
+        </div>
+        <div class="api-detail" id="apiDetail">
+          <div class="api-detail-header">
+            <div class="api-detail-method" style="background:color-mix(in oklab, #3898ec 12%, transparent); color:#3898ec;">POST</div>
+            <div class="api-detail-path">/auth/login</div>
+          </div>
+          <div class="api-section">
+            <h3>请求体</h3>
+            <div class="api-type-card">
+              <div class="api-type-row"><span class="field">email</span><span class="type">string</span><span class="opt">required</span></div>
+              <div class="api-type-row"><span class="field">password</span><span class="type">string</span><span class="opt">required</span></div>
+            </div>
+          </div>
+          <div class="api-section">
+            <h3>响应 — 200</h3>
+            <div class="api-type-card">
+              <div class="api-type-row"><span class="field">token</span><span class="type">string</span><span class="opt"></span></div>
+              <div class="api-type-row"><span class="field">refreshToken</span><span class="type">string</span><span class="opt"></span></div>
+              <div class="api-type-row"><span class="field">user</span><span class="type">User</span><span class="opt">→ database-schema.md</span></div>
+            </div>
+          </div>
+          <div class="api-section">
+            <h3>错误码</h3>
+            <div class="api-type-card">
+              <div class="api-type-row"><span class="field">401</span><span class="type">UnauthorizedError</span><span class="opt">邮箱或密码错误</span></div>
+              <div class="api-type-row"><span class="field">429</span><span class="type">RateLimitError</span><span class="opt">请求过于频繁</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Knowledge Graph View -->
+    <div class="view" id="view-graph">
+      <div class="graph-view" id="graphCanvas">
+        <div class="graph-filters">
+          <button class="graph-filter active" data-filter="all">全部</button>
+          <button class="graph-filter" data-filter="ref">引用</button>
+          <button class="graph-filter" data-filter="fk">FK</button>
+          <button class="graph-filter" data-filter="extends">继承</button>
+        </div>
+        <div class="graph-canvas">
+          <div class="graph-canvas-inner" style="transform: translate(40px, 60px);">
+            <svg class="graph-svg" id="graphSvg" width="900" height="500">
+              <!-- doc refs -->
+              <line x1="200" y1="40" x2="460" y2="40" data-edge="ref" class="ref-line"></line>
+              <line x1="460" y1="60" x2="460" y2="160" data-edge="ref" class="ref-line"></line>
+              <line x1="460" y1="180" x2="700" y2="180" data-edge="ref" class="ref-line"></line>
+              <line x1="200" y1="60" x2="200" y2="340" data-edge="ref" class="ref-line"></line>
+              <!-- FK -->
+              <line x1="460" y1="200" x2="300" y2="400" data-edge="fk" class="fk-line"></line>
+              <line x1="460" y1="200" x2="460" y2="400" data-edge="fk" class="fk-line"></line>
+              <line x1="460" y1="200" x2="620" y2="400" data-edge="fk" class="fk-line"></line>
+              <!-- extends -->
+              <line x1="700" y1="200" x2="300" y2="400" data-edge="extends" class="extends-line"></line>
+              <line x1="700" y1="200" x2="460" y2="400" data-edge="extends" class="extends-line"></line>
+              <line x1="700" y1="200" x2="620" y2="400" data-edge="extends" class="extends-line"></line>
+            </svg>
+
+            <!-- Document nodes -->
+            <div class="graph-node doc" style="left: 120; top: 20;" data-node="prd">PRD.md</div>
+            <div class="graph-node doc" style="left: 380; top: 20;" data-node="arch">system-design.md</div>
+            <div class="graph-node doc" style="left: 120; top: 300;" data-node="uiux">interaction-spec.md</div>
+            <div class="graph-node doc" style="left: 380; top: 140;" data-node="db">database-schema.md</div>
+            <div class="graph-node doc" style="left: 620; top: 160;" data-node="api">api-contract.md</div>
+
+            <!-- Table nodes -->
+            <div class="graph-node table" style="left: 240; top: 380;" data-node="t-users">users</div>
+            <div class="graph-node table" style="left: 400; top: 380;" data-node="t-orders">orders</div>
+            <div class="graph-node table" style="left: 560; top: 380;" data-node="t-products">products</div>
+
+            <!-- Type nodes -->
+            <div class="graph-node type" style="left: 700; top: 60;" data-node="ty-user">User</div>
+            <div class="graph-node type" style="left: 780; top: 120;" data-node="ty-order">Order</div>
+            <div class="graph-node type" style="left: 800; top: 200;" data-node="ty-product">Product</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Status Bar -->
+  <footer class="statusbar">
+    <span><span class="dot green"></span>已解析</span>
+    <span class="sep">|</span>
+    <span>5 文档</span>
+    <span class="sep">|</span>
+    <span>12 关系</span>
+    <span class="sep">|</span>
+    <span>2 分钟前更新</span>
+  </footer>
+</div>
+
+<!-- Search Overlay -->
+<div class="search-overlay" id="searchOverlay">
+  <div class="search-dialog">
+    <input type="text" id="searchField" placeholder="搜索文档、类型、表名...">
+    <div class="search-results" id="searchResults">
+      <div class="search-result" data-doc="db-schema">
+        <div class="doc-name">Contract / database-schema.md</div>
+        <div class="match"><mark>users</mark> 表 — 用户注册与认证</div>
+      </div>
+      <div class="search-result" data-doc="db-schema">
+        <div class="doc-name">Contract / database-schema.md</div>
+        <div class="match"><mark>orders</mark> 表 — 订单主表</div>
+      </div>
+      <div class="search-result" data-doc="api-contract">
+        <div class="doc-name">Contract / api-contract.md</div>
+        <div class="match">POST /auth/login — 用户登录</div>
+      </div>
+      <div class="search-result" data-doc="api-contract">
+        <div class="doc-name">Contract / api-contract.md</div>
+        <div class="match">interface <mark>User</mark> — 用户类型定义</div>
+      </div>
+      <div class="search-result" data-doc="arch">
+        <div class="doc-name">Architecture / system-design.md</div>
+        <div class="match">系统分层 — Parse / Data / UI</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  /* ── State ── */
+  var currentView = 'doc';
+
+  /* ── View switching ── */
+  var tabs = document.querySelectorAll('#viewTabs button');
+  var views = document.querySelectorAll('.view');
+
+  tabs.forEach(function(tab) {
+    tab.addEventListener('click', function() {
+      var view = this.dataset.view;
+      switchView(view);
+    });
+  });
+
+  function switchView(view) {
+    currentView = view;
+    tabs.forEach(function(t) { t.classList.toggle('active', t.dataset.view === view); });
+    views.forEach(function(v) { v.classList.toggle('active', v.id === 'view-' + view); });
+  }
+
+  /* ── Sidebar toggle ── */
+  var sidebar = document.getElementById('sidebar');
+  var toggle = document.getElementById('sidebarToggle');
+
+  toggle.addEventListener('click', function() {
+    if (window.innerWidth <= 768) {
+      sidebar.classList.toggle('open');
+    } else {
+      sidebar.classList.toggle('collapsed');
+    }
+  });
+
+  /* ── Sidebar folder expand/collapse ── */
+  document.querySelectorAll('.tree-folder-header').forEach(function(header) {
+    header.addEventListener('click', function() {
+      this.parentElement.classList.toggle('open');
+    });
+  });
+
+  /* ── Sidebar document selection ── */
+  document.querySelectorAll('.tree-doc').forEach(function(doc) {
+    doc.addEventListener('click', function() {
+      document.querySelectorAll('.tree-doc').forEach(function(d) { d.classList.remove('active'); });
+      this.classList.add('active');
+      switchView('doc');
+      if (window.innerWidth <= 768) sidebar.classList.remove('open');
+    });
+  });
+
+  /* ── Search dialog ── */
+  var searchOverlay = document.getElementById('searchOverlay');
+  var searchField = document.getElementById('searchField');
+  var searchInput = document.getElementById('searchInput');
+
+  searchInput.addEventListener('click', openSearch);
+
+  function openSearch() {
+    searchOverlay.classList.add('open');
+    setTimeout(function() { searchField.focus(); }, 50);
+  }
+
+  function closeSearch() {
+    searchOverlay.classList.remove('open');
+    searchField.value = '';
+  }
+
+  searchOverlay.addEventListener('click', function(e) {
+    if (e.target === searchOverlay) closeSearch();
+  });
+
+  document.addEventListener('keydown', function(e) {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      e.preventDefault();
+      searchOverlay.classList.contains('open') ? closeSearch() : openSearch();
+    }
+    if (e.key === 'Escape') closeSearch();
+  });
+
+  /* ── Search result click ── */
+  document.querySelectorAll('.search-result').forEach(function(r) {
+    r.addEventListener('click', function() {
+      closeSearch();
+      switchView('doc');
+    });
+  });
+
+  /* ── ER Diagram interaction ── */
+  var erdTables = document.querySelectorAll('.erd-table');
+  var erdEdges = document.querySelectorAll('.erd-svg path');
+
+  var edgeMap = {
+    'users': ['erd-edge-1'],
+    'orders': ['erd-edge-1', 'erd-edge-2'],
+    'order_items': ['erd-edge-2', 'erd-edge-3'],
+    'products': ['erd-edge-3']
+  };
+
+  erdTables.forEach(function(table) {
+    table.addEventListener('click', function() {
+      var name = this.dataset.table;
+      var highlighted = this.classList.contains('highlighted');
+
+      erdTables.forEach(function(t) { t.classList.remove('highlighted'); t.style.boxShadow = ''; });
+      erdEdges.forEach(function(e) { e.classList.remove('highlighted'); });
+
+      if (!highlighted) {
+        this.classList.add('highlighted');
+        this.style.boxShadow = '0 0 0 2px var(--accent), var(--elev-float)';
+        var edges = edgeMap[name] || [];
+        edges.forEach(function(id) {
+          var el = document.getElementById(id);
+          if (el) el.classList.add('highlighted');
+        });
+      }
+    });
+  });
+
+  /* ER diagram panning */
+  var erdPan = document.getElementById('erdPan');
+  var erdInner = document.getElementById('erdInner');
+  var erdDragging = false, erdStartX = 0, erdStartY = 0, erdOffX = 60, erdOffY = 40;
+
+  erdPan.addEventListener('mousedown', function(e) {
+    if (e.target.closest('.erd-table')) return;
+    erdDragging = true;
+    erdStartX = e.clientX; erdStartY = e.clientY;
+    erdPan.classList.add('grabbing');
+  });
+  document.addEventListener('mousemove', function(e) {
+    if (!erdDragging) return;
+    erdOffX += e.clientX - erdStartX;
+    erdOffY += e.clientY - erdStartY;
+    erdStartX = e.clientX; erdStartY = e.clientY;
+    erdInner.style.transform = 'translate(' + erdOffX + 'px,' + erdOffY + 'px)';
+  });
+  document.addEventListener('mouseup', function() {
+    erdDragging = false;
+    erdPan.classList.remove('grabbing');
+  });
+
+  /* ── API Browser ── */
+  var apiEndpoints = document.querySelectorAll('.api-endpoint');
+  var apiDetail = document.getElementById('apiDetail');
+
+  var apiData = {
+    'auth-login': { method: 'POST', color: '#3898ec', path: '/auth/login', req: [['email','string','required'],['password','string','required']], res: [['token','string',''],['refreshToken','string',''],['user','User','→ schema']], errs: [['401','UnauthorizedError','邮箱或密码错误'],['429','RateLimitError','请求过于频繁']] },
+    'auth-register': { method: 'POST', color: '#3898ec', path: '/auth/register', req: [['email','string','required'],['password','string','required'],['name','string','required']], res: [['token','string',''],['user','User','→ schema']], errs: [['409','ConflictError','邮箱已注册'],['422','ValidationError','输入验证失败']] },
+    'auth-refresh': { method: 'POST', color: '#3898ec', path: '/auth/refresh', req: [['refreshToken','string','required']], res: [['token','string',''],['refreshToken','string','']], errs: [['401','UnauthorizedError','Token 无效或过期']] },
+    'users-list': { method: 'GET', color: '#16a34a', path: '/users', req: [], res: [['data','User[]',''],['total','number',''],['page','number','']], errs: [['403','ForbiddenError','需要 admin 权限']] },
+    'users-get': { method: 'GET', color: '#16a34a', path: '/users/:id', req: [], res: [['data','User','']], errs: [['404','NotFoundError','用户不存在'],['403','ForbiddenError','无权限']] },
+    'users-update': { method: 'PATCH', color: '#a1850a', path: '/users/:id', req: [['name','string','optional'],['avatarUrl','string | null','optional']], res: [['data','User','']], errs: [['404','NotFoundError','用户不存在'],['422','ValidationError','输入验证失败']] },
+    'products-list': { method: 'GET', color: '#16a34a', path: '/products', req: [], res: [['data','Product[]',''],['total','number','']], errs: [] },
+    'products-get': { method: 'GET', color: '#16a34a', path: '/products/:id', req: [], res: [['data','Product','']], errs: [['404','NotFoundError','产品不存在']] },
+    'orders-list': { method: 'GET', color: '#16a34a', path: '/orders', req: [], res: [['data','Order[]',''],['total','number','']], errs: [['403','ForbiddenError','需要认证']] },
+    'orders-create': { method: 'POST', color: '#3898ec', path: '/orders', req: [['items','{ productId: string; qty: number }[]','required']], res: [['data','Order',''],['paymentUrl','string | null','']], errs: [['422','ValidationError','商品不存在或库存不足']] },
+    'orders-get': { method: 'GET', color: '#16a34a', path: '/orders/:id', req: [], res: [['data','Order','']], errs: [['404','NotFoundError','订单不存在'],['403','ForbiddenError','无权限']] }
+  };
+
+  apiEndpoints.forEach(function(ep) {
+    ep.addEventListener('click', function() {
+      apiEndpoints.forEach(function(e) { e.classList.remove('active'); });
+      this.classList.add('active');
+      var key = this.dataset.ep;
+      var d = apiData[key];
+      if (!d) return;
+
+      var methodClass = d.method === 'GET' ? 'get' : d.method === 'POST' ? 'post' : 'patch';
+      var html = '<div class="api-detail-header">';
+      html += '<div class="api-detail-method" style="background:color-mix(in oklab, ' + d.color + ' 12%, transparent); color:' + d.color + ';">' + d.method + '</div>';
+      html += '<div class="api-detail-path">' + d.path + '</div></div>';
+
+      if (d.req.length) {
+        html += '<div class="api-section"><h3>请求体</h3><div class="api-type-card">';
+        d.req.forEach(function(r) { html += '<div class="api-type-row"><span class="field">' + r[0] + '</span><span class="type">' + r[1] + '</span><span class="opt">' + r[2] + '</span></div>'; });
+        html += '</div></div>';
+      }
+
+      html += '<div class="api-section"><h3>响应 — 200</h3><div class="api-type-card">';
+      d.res.forEach(function(r) { html += '<div class="api-type-row"><span class="field">' + r[0] + '</span><span class="type">' + r[1] + '</span><span class="opt">' + r[2] + '</span></div>'; });
+      html += '</div></div>';
+
+      if (d.errs.length) {
+        html += '<div class="api-section"><h3>错误码</h3><div class="api-type-card">';
+        d.errs.forEach(function(e) { html += '<div class="api-type-row"><span class="field">' + e[0] + '</span><span class="type">' + e[1] + '</span><span class="opt">' + e[2] + '</span></div>'; });
+        html += '</div></div>';
+      }
+
+      apiDetail.innerHTML = html;
+    });
+  });
+
+  /* ── Knowledge Graph ── */
+  var graphNodes = document.querySelectorAll('.graph-node');
+  var graphLines = document.querySelectorAll('.graph-svg line');
+  var graphFilters = document.querySelectorAll('.graph-filter');
+
+  graphNodes.forEach(function(node) {
+    node.addEventListener('click', function() {
+      var wasActive = this.classList.contains('highlighted');
+      graphNodes.forEach(function(n) { n.classList.remove('highlighted'); });
+      graphLines.forEach(function(l) { l.classList.remove('highlighted'); });
+
+      if (!wasActive) {
+        this.classList.add('highlighted');
+        var name = this.dataset.node;
+        graphLines.forEach(function(line) {
+          var connected = isNodeConnected(name, line);
+          if (connected) line.classList.add('highlighted');
+        });
+      }
+    });
+  });
+
+  function isNodeConnected(nodeId, line) {
+    var map = {
+      'prd': ['ref-line'],
+      'arch': ['ref-line'],
+      'db': ['ref-line', 'fk-line'],
+      'api': ['ref-line', 'extends-line'],
+      'uiux': ['ref-line'],
+      't-users': ['fk-line', 'extends-line'],
+      't-orders': ['fk-line', 'extends-line'],
+      't-products': ['fk-line', 'extends-line'],
+      'ty-user': ['extends-line'],
+      'ty-order': ['extends-line'],
+      'ty-product': ['extends-line']
+    };
+    var edges = map[nodeId] || [];
+    return edges.some(function(cls) { return line.classList.contains(cls); });
+  }
+
+  graphFilters.forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      graphFilters.forEach(function(b) { b.classList.remove('active'); });
+      this.classList.add('active');
+      var filter = this.dataset.filter;
+
+      graphLines.forEach(function(line) {
+        if (filter === 'all') {
+          line.style.opacity = '0.3';
+          line.classList.remove('highlighted');
+        } else {
+          var match = line.dataset.edge === filter;
+          line.style.opacity = match ? '0.6' : '0.08';
+          if (!match) line.classList.remove('highlighted');
+        }
+      });
+    });
+  });
+
+  /* ── ER card expand/collapse ── */
+  document.querySelectorAll('.er-card-header').forEach(function(header) {
+    header.addEventListener('click', function() {
+      var body = this.nextElementSibling;
+      var hidden = body.style.display === 'none';
+      body.style.display = hidden ? '' : 'none';
+    });
+  });
+
+  document.querySelectorAll('.type-card-header').forEach(function(header) {
+    header.addEventListener('click', function() {
+      var body = this.nextElementSibling;
+      var hidden = body.style.display === 'none';
+      body.style.display = hidden ? '' : 'none';
+    });
+  });
+
+  /* ── Close sidebar on outside click (mobile) ── */
+  document.getElementById('content').addEventListener('click', function() {
+    if (window.innerWidth <= 768) sidebar.classList.remove('open');
+  });
+
+})();
+</script>
+
+<script data-od-snapshot-bridge="">(function(){
+  function copyComputedStyle(source, target){
+    if (!source || !target || source.nodeType !== 1 || target.nodeType !== 1) return;
+    var computed = window.getComputedStyle(source);
+    var style = target.getAttribute('style') || '';
+    for (var i = 0; i < computed.length; i++){
+      var prop = computed[i];
+      style += prop + ':' + computed.getPropertyValue(prop) + ';';
+    }
+    target.setAttribute('style', style);
+  }
+  function syncElementState(source, target){
+    var tag = source.tagName ? source.tagName.toLowerCase() : '';
+    if (tag === 'img' && source.currentSrc) target.setAttribute('src', source.currentSrc);
+    if (tag === 'input' || tag === 'textarea') target.setAttribute('value', source.value || '');
+    if (tag === 'canvas') {
+      try {
+        var img = document.createElement('img');
+        img.setAttribute('src', source.toDataURL('image/png'));
+        img.setAttribute('style', target.getAttribute('style') || '');
+        target.parentNode && target.parentNode.replaceChild(img, target);
+      } catch (_) {}
+    }
+  }
+  function inlineSnapshotStyles(originalRoot, cloneRoot){
+    copyComputedStyle(originalRoot, cloneRoot);
+    syncElementState(originalRoot, cloneRoot);
+    var originals = originalRoot.querySelectorAll('*');
+    var clones = cloneRoot.querySelectorAll('*');
+    var count = Math.min(originals.length, clones.length);
+    for (var i = 0; i < count; i++){
+      copyComputedStyle(originals[i], clones[i]);
+      syncElementState(originals[i], clones[i]);
+    }
+    var scripts = cloneRoot.querySelectorAll('script');
+    for (var s = scripts.length - 1; s >= 0; s--) scripts[s].remove();
+  }
+  function waitForImages(){
+    var imgs = Array.prototype.slice.call(document.images || []);
+    return Promise.all(imgs.map(function(img){
+      if (img.complete) return Promise.resolve();
+      return new Promise(function(resolve){
+        img.addEventListener('load', resolve, { once: true });
+        img.addEventListener('error', resolve, { once: true });
+      });
+    }));
+  }
+  function renderSnapshot(id){
+    var w = Math.max(1, window.innerWidth || document.documentElement.clientWidth || 1);
+    var h = Math.max(1, window.innerHeight || document.documentElement.clientHeight || 1);
+    var dpr = window.devicePixelRatio || 1;
+    var docW = Math.max(w, document.documentElement.scrollWidth || 0, document.body ? document.body.scrollWidth : 0);
+    var docH = Math.max(h, document.documentElement.scrollHeight || 0, document.body ? document.body.scrollHeight : 0);
+    var clone = document.documentElement.cloneNode(true);
+    clone.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
+    inlineSnapshotStyles(document.documentElement, clone);
+    var serializer = new XMLSerializer();
+    var html = serializer.serializeToString(clone);
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '">' +
+      '<foreignObject x="' + (-window.scrollX || 0) + '" y="' + (-window.scrollY || 0) + '" width="' + docW + '" height="' + docH + '">' +
+      html +
+      '</foreignObject></svg>';
+    var img = new Image();
+    img.onload = function(){
+      try {
+        var canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.floor(w * dpr));
+        canvas.height = Math.max(1, Math.floor(h * dpr));
+        var ctx = canvas.getContext('2d');
+        if (!ctx) throw new Error('no 2d context');
+        ctx.scale(dpr, dpr);
+        ctx.drawImage(img, 0, 0, w, h);
+        window.parent.postMessage({ type: 'od:snapshot:result', id: id, dataUrl: canvas.toDataURL('image/png'), w: canvas.width, h: canvas.height }, '*');
+      } catch (err) {
+        window.parent.postMessage({ type: 'od:snapshot:result', id: id, error: String(err && err.message || err) }, '*');
+      }
+    };
+    img.onerror = function(){
+      window.parent.postMessage({ type: 'od:snapshot:result', id: id, error: 'snapshot image failed' }, '*');
+    };
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+  }
+  window.addEventListener('message', function(ev){
+    var data = ev && ev.data;
+    if (!data || data.type !== 'od:snapshot' || !data.id) return;
+    waitForImages().then(function(){ renderSnapshot(String(data.id)); });
+  });
+})();</script></body></html>
