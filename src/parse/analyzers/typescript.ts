@@ -1,4 +1,4 @@
-import type { TSParseResult, InterfaceDef, PropertyDef, TypeAliasDef, TSEnumDef, ImportDef } from '../types'
+import type { TSParseResult, PropertyDef } from '../types'
 
 export function analyzeTypeScript(code: string): TSParseResult {
   const result: TSParseResult = {
@@ -21,14 +21,14 @@ export function analyzeTypeScript(code: string): TSParseResult {
       specifiers.push(...m[3].split(',').map(s => s.trim()).filter(Boolean))
     }
     if (m[4]) specifiers.push(m[4])
-    result.imports.push({ source: m[5], specifiers })
+    result.imports.push({ source: m[5]!, specifiers })
   }
 
   // Parse interfaces
   const ifaceRegex = /(?:\/\*\*([\s\S]*?)\*\/\s*)?export\s+interface\s+(\w+)(?:\s+extends\s+([^{]+))?\s*\{/g
   while ((m = ifaceRegex.exec(code)) !== null) {
     const jsDoc = m[1]?.replace(/^\s*\*\s?/gm, '').trim() || undefined
-    const name = m[2]
+    const name = m[2]!
     const extendsList = m[3]?.split(',').map(e => e.trim()).filter(Boolean) || undefined
     const body = extractBraceBlock(code, m.index + m[0].length - 1)
     const properties = parseInterfaceProperties(body)
@@ -40,7 +40,7 @@ export function analyzeTypeScript(code: string): TSParseResult {
   while ((m = ifaceNeRegex.exec(code)) !== null) {
     if (code.slice(Math.max(0, m.index - 10), m.index).includes('export')) continue
     const jsDoc = m[1]?.replace(/^\s*\*\s?/gm, '').trim() || undefined
-    const name = m[2]
+    const name = m[2]!
     const extendsList = m[3]?.split(',').map(e => e.trim()).filter(Boolean) || undefined
     const body = extractBraceBlock(code, m.index + m[0].length - 1)
     const properties = parseInterfaceProperties(body)
@@ -51,7 +51,7 @@ export function analyzeTypeScript(code: string): TSParseResult {
   const typeRegex = /(?:\/\*\*([\s\S]*?)\*\/\s*)?export\s+type\s+(\w+)\s*=\s*/g
   while ((m = typeRegex.exec(code)) !== null) {
     const jsDoc = m[1]?.replace(/^\s*\*\s?/gm, '').trim() || undefined
-    const name = m[2]
+    const name = m[2]!
     const defStart = m.index + m[0].length
     const definition = extractTypeDefinition(code, defStart)
     result.typeAliases.push({ name, definition, exported: true, jsDoc })
@@ -61,7 +61,7 @@ export function analyzeTypeScript(code: string): TSParseResult {
   while ((m = typeNeRegex.exec(code)) !== null) {
     if (code.slice(Math.max(0, m.index - 10), m.index).includes('export')) continue
     const jsDoc = m[1]?.replace(/^\s*\*\s?/gm, '').trim() || undefined
-    const name = m[2]
+    const name = m[2]!
     const defStart = m.index + m[0].length
     const definition = extractTypeDefinition(code, defStart)
     result.typeAliases.push({ name, definition, exported: false, jsDoc })
@@ -70,7 +70,7 @@ export function analyzeTypeScript(code: string): TSParseResult {
   // Parse enums
   const enumRegex = /export\s+enum\s+(\w+)\s*\{/g
   while ((m = enumRegex.exec(code)) !== null) {
-    const name = m[1]
+    const name = m[1]!
     const body = extractBraceBlock(code, m.index + m[0].length - 1)
     const members = parseEnumMembers(body)
     result.enums.push({ name, members, exported: true })
@@ -78,7 +78,7 @@ export function analyzeTypeScript(code: string): TSParseResult {
 
   const enumNeRegex = /(?<!export\s)enum\s+(\w+)\s*\{/g
   while ((m = enumNeRegex.exec(code)) !== null) {
-    const name = m[1]
+    const name = m[1]!
     const body = extractBraceBlock(code, m.index + m[0].length - 1)
     const members = parseEnumMembers(body)
     result.enums.push({ name, members, exported: false })
@@ -106,7 +106,7 @@ function extractTypeDefinition(code: string, start: number): string {
   let depth = 0
   let i = start
   // Skip leading whitespace
-  while (i < code.length && /\s/.test(code[i])) i++
+  while (i < code.length && /\s/.test(code[i]!)) i++
   const defStart = i
 
   while (i < code.length) {
@@ -130,13 +130,33 @@ function parseInterfaceProperties(body: string): PropertyDef[] {
   const properties: PropertyDef[] = []
   const lines = body.split('\n')
   let currentJsDoc: string | undefined
+  let pendingProp: { name: string; optional: boolean; typeParts: string[]; braceDepth: number } | null = null
 
   for (const line of lines) {
     const trimmed = line.trim()
 
+    // If we're accumulating a multi-line type, keep reading
+    if (pendingProp) {
+      pendingProp.typeParts.push(trimmed)
+      for (const ch of trimmed) {
+        if (ch === '{' || ch === '(' || ch === '[') pendingProp.braceDepth++
+        else if (ch === '}' || ch === ')' || ch === ']') pendingProp.braceDepth--
+      }
+      if (pendingProp.braceDepth <= 0) {
+        properties.push({
+          name: pendingProp.name,
+          type: pendingProp.typeParts.join(' ').replace(/[,;]\s*$/, '').trim(),
+          optional: pendingProp.optional,
+          jsDoc: currentJsDoc,
+        })
+        currentJsDoc = undefined
+        pendingProp = null
+      }
+      continue
+    }
+
     // Collect jsdoc comments
     if (trimmed.startsWith('/**')) {
-      const jsDocLines: string[] = [trimmed]
       if (!trimmed.endsWith('*/')) {
         // Multi-line jsdoc — collect remaining lines
         continue
@@ -155,9 +175,20 @@ function parseInterfaceProperties(body: string): PropertyDef[] {
     // Match property: name?: type; or name: type;
     const propMatch = trimmed.match(/^(\w+)(\??):\s*(.+?)[,;]?\s*$/)
     if (propMatch) {
+      const typeStr = propMatch[3]!.trim()
+      // Check if the type has unbalanced braces (multi-line object type)
+      let braceDepth = 0
+      for (const ch of typeStr) {
+        if (ch === '{' || ch === '(' || ch === '[') braceDepth++
+        else if (ch === '}' || ch === ')' || ch === ']') braceDepth--
+      }
+      if (braceDepth > 0) {
+        pendingProp = { name: propMatch[1]!, optional: propMatch[2] === '?', typeParts: [typeStr], braceDepth }
+        continue
+      }
       properties.push({
-        name: propMatch[1],
-        type: propMatch[3].trim(),
+        name: propMatch[1]!,
+        type: typeStr,
         optional: propMatch[2] === '?',
         jsDoc: currentJsDoc,
       })
@@ -179,7 +210,7 @@ function parseEnumMembers(body: string): string[] {
   const regex = /(\w+)\s*(?:=\s*[^,}]+)?[,}]/g
   let m
   while ((m = regex.exec(body)) !== null) {
-    members.push(m[1])
+    members.push(m[1]!)
   }
   return members
 }
