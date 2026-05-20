@@ -1,10 +1,13 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useSpecStore } from '@/store/spec-store'
 import { StateMachineDiagram } from '@/components/enhanced/StateMachineDiagram'
 import type { StateMachineParseResult } from '@/parse/types'
 
 export function StateMachinePage() {
   const project = useSpecStore(s => s.project)
+  const setViewMode = useSpecStore(s => s.setViewMode)
+
+  useEffect(() => { setViewMode('doc') }, [setViewMode])
 
   const mergedResult = useMemo<StateMachineParseResult>(() => {
     if (!project) return { machines: [] }

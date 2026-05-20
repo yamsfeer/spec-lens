@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import {
   ReactFlow,
   Controls,
@@ -64,7 +64,10 @@ const FILTERS = [
 
 export function GraphPage() {
   const project = useSpecStore(s => s.project)
+  const setViewMode = useSpecStore(s => s.setViewMode)
   const [activeFilter, setActiveFilter] = useState('all')
+
+  useEffect(() => { setViewMode('graph') }, [setViewMode])
 
   const { nodes: layoutedNodes, edges: layoutedEdges } = useMemo(() => {
     if (!project) return { nodes: [], edges: [] }

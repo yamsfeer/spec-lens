@@ -1,8 +1,11 @@
-import { useState, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useSpecStore } from '@/store/spec-store'
 
 export function APIPage() {
   const project = useSpecStore(s => s.project)
+  const setViewMode = useSpecStore(s => s.setViewMode)
+
+  useEffect(() => { setViewMode('api') }, [setViewMode])
 
   const apiContracts = useMemo(() => {
     if (!project) return []

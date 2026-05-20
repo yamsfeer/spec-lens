@@ -1,10 +1,13 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useSpecStore } from '@/store/spec-store'
 import { DesignTokenViewer } from '@/components/enhanced/DesignTokenViewer'
 import type { DesignTokenParseResult } from '@/parse/types'
 
 export function DesignTokenPage() {
   const project = useSpecStore(s => s.project)
+  const setViewMode = useSpecStore(s => s.setViewMode)
+
+  useEffect(() => { setViewMode('doc') }, [setViewMode])
 
   const mergedResult = useMemo<DesignTokenParseResult>(() => {
     if (!project) return { tokens: [], groups: [] }

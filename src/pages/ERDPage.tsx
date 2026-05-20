@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import {
   ReactFlow,
   Controls,
@@ -64,6 +64,9 @@ const nodeTypes = { tableNode: TableNode }
 
 export function ERDPage() {
   const project = useSpecStore(s => s.project)
+  const setViewMode = useSpecStore(s => s.setViewMode)
+
+  useEffect(() => { setViewMode('erd') }, [setViewMode])
 
   const { nodes: layoutedNodes, edges: layoutedEdges } = useMemo(() => {
     if (!project) return { nodes: [], edges: [] }
