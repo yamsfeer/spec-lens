@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useProjectsStore } from '@/store/projects-store'
+import { FolderOpen, ChevronDown, X } from 'lucide-react'
 
 export function ProjectSelector() {
   const projects = useProjectsStore(s => s.projects)
@@ -29,9 +30,9 @@ export function ProjectSelector() {
         className="project-selector-trigger"
         onClick={() => setOpen(!open)}
       >
-        <span className="project-selector-icon">📂</span>
+        <FolderOpen size={15} className="project-selector-icon" strokeWidth={1.8} />
         <span className="project-selector-name">{current?.name ?? '选择项目'}</span>
-        <span className="project-selector-arrow">{open ? '▲' : '▼'}</span>
+        <ChevronDown size={13} className={`project-selector-arrow ${open ? 'open' : ''}`} />
       </button>
 
       {open && (
@@ -48,6 +49,7 @@ export function ProjectSelector() {
                   setOpen(false)
                 }}
               >
+                <FolderOpen size={14} strokeWidth={1.8} style={{ flexShrink: 0 }} />
                 {p.name}
               </button>
               {p.slug !== currentSlug && (
@@ -61,7 +63,7 @@ export function ProjectSelector() {
                     }
                   }}
                 >
-                  ×
+                  <X size={14} />
                 </button>
               )}
             </div>

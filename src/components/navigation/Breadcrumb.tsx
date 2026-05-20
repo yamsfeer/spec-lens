@@ -18,7 +18,7 @@ export function Breadcrumb({ path }: BreadcrumbProps) {
   }))
 
   return (
-    <nav className="breadcrumb">
+    <div className="breadcrumb">
       {crumbs.map((crumb, i) => (
         <span key={crumb.path} className="flex items-center gap-1">
           {i > 0 && <span className="sep">/</span>}
@@ -39,6 +39,6 @@ export function Breadcrumb({ path }: BreadcrumbProps) {
           )}
         </span>
       ))}
-    </nav>
+    </div>
   )
 }

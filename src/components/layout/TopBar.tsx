@@ -3,6 +3,7 @@ import { useSpecStore } from '@/store/spec-store'
 import { useNavigate } from 'react-router'
 import { SearchDialog } from '../navigation/SearchDialog'
 import { ProjectSelector } from './ProjectSelector'
+import { Search } from 'lucide-react'
 
 const VIEWS = [
   { mode: 'doc', label: '文档', short: '文' },
@@ -12,8 +13,6 @@ const VIEWS = [
 ] as const
 
 export function TopBar() {
-  const sidebarOpen = useSpecStore(s => s.sidebarOpen)
-  const setSidebarOpen = useSpecStore(s => s.setSidebarOpen)
   const [searchOpen, setSearchOpen] = useState(false)
   const viewMode = useSpecStore(s => s.viewMode)
   const setViewMode = useSpecStore(s => s.setViewMode)
@@ -24,13 +23,13 @@ export function TopBar() {
       <header className="topbar">
         <div className="topbar-brand">
           <div className="mark">S</div>
-          Specs Viewer
+          Spec Lens
         </div>
 
         <ProjectSelector />
 
         <div className="topbar-search" onClick={() => setSearchOpen(true)}>
-          <span className="icon">🔍</span>
+          <Search size={15} className="topbar-search-icon" />
           <input type="text" placeholder="搜索文档、类型、表..." readOnly />
           <span className="kbd">⌘K</span>
         </div>
@@ -42,7 +41,7 @@ export function TopBar() {
               className={viewMode === v.mode ? 'active' : ''}
               onClick={() => {
                 setViewMode(v.mode as typeof viewMode)
-                navigate(`/${v.mode === 'doc' ? '' : v.mode}`)
+                navigate(`/${v.mode === 'doc' ? 'doc' : v.mode}`)
               }}
             >
               <span className="view-label-full">{v.label}</span>
@@ -50,15 +49,6 @@ export function TopBar() {
             </button>
           ))}
         </nav>
-
-        <div className="topbar-actions">
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            title="切换侧边栏"
-          >
-            ☰
-          </button>
-        </div>
       </header>
 
       <SearchDialog open={searchOpen} onClose={() => setSearchOpen(false)} />

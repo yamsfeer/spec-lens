@@ -12,6 +12,7 @@ interface SpecStore {
   activeDoc: string | null
   activeSection: string | null
   sidebarOpen: boolean
+  sidebarWidth: number
   viewMode: ViewMode
 
   loadProject: (files: Map<string, string>, rootDir?: string) => Promise<void>
@@ -19,6 +20,7 @@ interface SpecStore {
   setActiveDoc: (path: string | null) => void
   setActiveSection: (section: string | null) => void
   setSidebarOpen: (open: boolean) => void
+  setSidebarWidth: (width: number) => void
   setViewMode: (mode: ViewMode) => void
   updateDocument: (path: string, content: string) => Promise<void>
   removeDocument: (path: string) => Promise<void>
@@ -31,6 +33,7 @@ export const useSpecStore = create<SpecStore>((set, get) => ({
   activeDoc: null,
   activeSection: null,
   sidebarOpen: true,
+  sidebarWidth: 260,
   viewMode: 'doc',
 
   loadProject: async (files: Map<string, string>, rootDir?: string) => {
@@ -80,6 +83,8 @@ export const useSpecStore = create<SpecStore>((set, get) => ({
   setActiveSection: (section) => set({ activeSection: section }),
 
   setSidebarOpen: (open) => set({ sidebarOpen: open }),
+
+  setSidebarWidth: (width) => set({ sidebarWidth: Math.min(480, Math.max(180, width)) }),
 
   setViewMode: (mode) => set({ viewMode: mode }),
 

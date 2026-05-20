@@ -5,7 +5,7 @@ export function extractFrontmatter(source: string): { frontmatter: Frontmatter |
   const match = source.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?/)
   if (!match) return { frontmatter: undefined, content: source }
 
-  const frontmatterRaw = match[1]
+  const frontmatterRaw = match[1]!
   const content = source.slice(match[0].length)
 
   try {
