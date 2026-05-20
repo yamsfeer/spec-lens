@@ -6,7 +6,7 @@
 
 **原因：** `ts-morph` 依赖 Node.js 专属 API（`perf_hooks`、`fs` 等）。Vite 会将这些模块标记为 browser externalized，但运行时模块静默失败——`parseProject` 的 Promise 永远不会 resolve，应用卡在 "Loading specs" 页面，且无任何可见错误。
 
-**结果：** 应用正常加载。正则解析器覆盖了 interface（含 extends/jsDoc）、type alias、enum、import，满足 specs-viewer 的使用场景。代价是丧失完整语义分析（如类型推导、跨文件引用），但本项目不需要这些能力。
+**结果：** 应用正常加载。正则解析器覆盖了 interface（含 extends/jsDoc）、type alias、enum、import，满足 spec-lens 的使用场景。代价是丧失完整语义分析（如类型推导、跨文件引用），但本项目不需要这些能力。
 
 ---
 

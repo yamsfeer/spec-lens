@@ -1,4 +1,4 @@
-# Specs Viewer — Architecture
+# Spec Lens — Architecture
 
 **版本**: v0.2-draft
 **日期**: 2026-05-18
@@ -780,7 +780,7 @@ Markdown 渲染 + 增强渲染。这是最主要的视图，一篇文档一个�
 ## 7. 项目结构
 
 ```
-specs-viewer/
+spec-lens/
 ├── package.json
 ├── tsconfig.json
 ├── vite.config.ts

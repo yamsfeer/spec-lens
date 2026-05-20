@@ -9,7 +9,7 @@ category: prd
 
 ## Overview
 
-Specs Viewer is a tool that transforms Markdown-based Specs documents into an interactive, visual interface. It enables developers and stakeholders to navigate, search, and understand complex specification document families.
+Spec Lens is a tool that transforms Markdown-based Specs documents into an interactive, visual interface. It enables developers and stakeholders to navigate, search, and understand complex specification document families.
 
 ## User Stories
 

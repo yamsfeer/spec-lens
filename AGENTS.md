@@ -1,7 +1,7 @@
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **specs-viewer** (1637 symbols, 2436 relationships, 82 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **spec-lens** (1637 symbols, 2436 relationships, 82 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 
@@ -24,10 +24,10 @@ This project is indexed by GitNexus as **specs-viewer** (1637 symbols, 2436 rela
 
 | Resource | Use for |
 |----------|---------|
-| `gitnexus://repo/specs-viewer/context` | Codebase overview, check index freshness |
-| `gitnexus://repo/specs-viewer/clusters` | All functional areas |
-| `gitnexus://repo/specs-viewer/processes` | All execution flows |
-| `gitnexus://repo/specs-viewer/process/{name}` | Step-by-step execution trace |
+| `gitnexus://repo/spec-lens/context` | Codebase overview, check index freshness |
+| `gitnexus://repo/spec-lens/clusters` | All functional areas |
+| `gitnexus://repo/spec-lens/processes` | All execution flows |
+| `gitnexus://repo/spec-lens/process/{name}` | Step-by-step execution trace |
 
 ## CLI
 
