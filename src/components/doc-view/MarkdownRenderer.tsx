@@ -25,18 +25,18 @@ export function MarkdownRenderer({ content, codeBlocks, onLinkClick }: MarkdownR
       const lang = className?.replace('language-', '') || ''
       const value = String(children).replace(/\n$/, '')
 
-      if (!lang || !node?.position) {
+      // Block code without language tag (ASCII art, plain text blocks)
+      if (!lang && node?.position) {
         return (
-          <code style={{
-            padding: '1px 5px',
-            background: 'var(--surface-warm)',
-            borderRadius: '4px',
-            font: '13px/1.3 var(--font-mono)',
-            color: 'var(--coral)',
-          }}>
-            {children}
-          </code>
+          <div className="code-block code-block-plain">
+            <pre><code>{value}</code></pre>
+          </div>
         )
+      }
+
+      // Inline code (no position = inline context)
+      if (!lang || !node?.position) {
+        return <code className="md-inline-code">{children}</code>
       }
 
       const key = `${lang}::${value.split('\n')[0]}`
@@ -69,81 +69,33 @@ export function MarkdownRenderer({ content, codeBlocks, onLinkClick }: MarkdownR
               e.preventDefault()
               onLinkClick?.(href)
             }}
-            style={{
-              color: 'var(--coral)',
-              textDecoration: 'underline',
-              textDecorationStyle: 'dotted',
-              textUnderlineOffset: '3px',
-              cursor: 'pointer',
-            }}
+            className="md-link"
           >
             {children}
           </a>
         )
       }
       return (
-        <a href={href} target="_blank" rel="noopener noreferrer" style={{
-          color: 'var(--coral)',
-          textDecoration: 'underline',
-          textUnderlineOffset: '3px',
-        }}>
+        <a href={href} target="_blank" rel="noopener noreferrer" className="md-link md-link-external">
           {children}
         </a>
       )
     },
     table(props) {
       return (
-        <div style={{ overflowX: 'auto', margin: 'var(--space-4) 0' }}>
-          <table style={{ width: '100%', fontSize: '14px', borderCollapse: 'collapse' }} {...props} />
+        <div className="md-table-wrap">
+          <table {...props} />
         </div>
       )
     },
-    th(props) {
-      return <th style={{ border: '1px solid var(--border)', background: 'var(--surface)', padding: 'var(--space-2) var(--space-3)', textAlign: 'left', fontWeight: 500 }} {...props} />
-    },
-    td(props) {
-      return <td style={{ border: '1px solid var(--border)', padding: 'var(--space-2) var(--space-3)' }} {...props} />
-    },
-    h1(props) {
-      return <h1 style={{ scrollMarginTop: 'var(--space-8)' }} {...props} />
-    },
-    h2(props) {
-      return <h2 style={{ scrollMarginTop: 'var(--space-8)' }} {...props} />
-    },
-    h3(props) {
-      return <h3 style={{ scrollMarginTop: 'var(--space-8)' }} {...props} />
-    },
-    h4(props) {
-      return <h4 style={{ scrollMarginTop: 'var(--space-8)' }} {...props} />
-    },
-    p(props) {
-      return <p {...props} />
-    },
-    ul(props) {
-      return <ul style={{ margin: 'var(--space-3) 0', paddingLeft: 'var(--space-6)', listStyle: 'disc' }} {...props} />
-    },
-    ol(props) {
-      return <ol style={{ margin: 'var(--space-3) 0', paddingLeft: 'var(--space-6)', listStyle: 'decimal' }} {...props} />
-    },
-    li(props) {
-      return <li style={{ marginBottom: 'var(--space-1)' }} {...props} />
-    },
-    blockquote(props) {
-      return <blockquote style={{
-        margin: 'var(--space-4) 0',
-        paddingLeft: 'var(--space-4)',
-        borderLeft: '3px solid var(--accent)',
-        color: 'var(--muted)',
-        fontStyle: 'italic',
-      }} {...props} />
-    },
-    hr() {
-      return <hr style={{ margin: 'var(--space-6) 0', border: 'none', borderTop: '1px solid var(--border)' }} />
-    },
+    h1(props) { return <h1 style={{ scrollMarginTop: 'var(--space-8)' }} {...props} /> },
+    h2(props) { return <h2 style={{ scrollMarginTop: 'var(--space-8)' }} {...props} /> },
+    h3(props) { return <h3 style={{ scrollMarginTop: 'var(--space-8)' }} {...props} /> },
+    h4(props) { return <h4 style={{ scrollMarginTop: 'var(--space-8)' }} {...props} /> },
   }
 
   return (
-    <div className="doc-view">
+    <div className="md-body" spellCheck={false}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeSlug, [rehypeAutolinkHeadings, { behavior: 'wrap' }]]}

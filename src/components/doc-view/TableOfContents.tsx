@@ -26,9 +26,9 @@ export function TableOfContents({ headings }: TableOfContentsProps) {
     )
 
     // Observe all heading elements in the doc
-    const docView = container.querySelector('.doc-view')
-    if (docView) {
-      const headingEls = docView.querySelectorAll('h1[id], h2[id], h3[id], h4[id]')
+    const mdBody = container.querySelector('.md-body')
+    if (mdBody) {
+      const headingEls = mdBody.querySelectorAll('h1[id], h2[id], h3[id], h4[id]')
       headingEls.forEach(el => observerRef.current!.observe(el))
     }
 

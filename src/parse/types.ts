@@ -31,6 +31,7 @@ export interface ParsedDocument {
   frontmatter?: Frontmatter
   ast: Root
   rawContent: string
+  markdownContent: string
   meta: DocMeta
   codeBlocks: CodeBlockResult[]
 }

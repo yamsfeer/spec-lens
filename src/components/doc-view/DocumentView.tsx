@@ -1,7 +1,6 @@
 import { useSpecStore } from '@/store/spec-store'
 import { useNavigate } from 'react-router'
 import { MarkdownRenderer } from './MarkdownRenderer'
-import { Breadcrumb } from '../navigation/Breadcrumb'
 import { TableOfContents } from './TableOfContents'
 import { resolvePath } from '@/lib/path-resolver'
 
@@ -38,7 +37,6 @@ export function DocumentView() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <Breadcrumb path={activeDoc} />
       <div className="doc-scroll-area" style={{ overflowY: 'auto', flex: 1 }}>
         <div className="doc-layout">
           <div className="doc-main">
@@ -50,7 +48,7 @@ export function DocumentView() {
               </div>
             )}
             <MarkdownRenderer
-              content={doc.rawContent}
+              content={doc.markdownContent}
               codeBlocks={doc.codeBlocks}
               onLinkClick={handleLinkClick}
             />

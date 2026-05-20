@@ -12,6 +12,7 @@ import { extractTypeRelations } from './relations/type-relations'
 import { extractTokenRelations } from './relations/token-relations'
 import { extractMachineLinks } from './relations/machine-links'
 import { detectCategory } from '@/lib/category-detector'
+import { slug as githubSlug } from 'github-slugger'
 import type { ParsedDocument, CodeBlockResult, CodeBlockLang, Project, ProjectRelations } from './types'
 import type { Root } from 'mdast'
 
@@ -33,6 +34,7 @@ export async function parseDocument(path: string, content: string): Promise<Pars
     frontmatter,
     ast,
     rawContent: content,
+    markdownContent,
     meta,
     codeBlocks: analyzedBlocks,
   }
@@ -154,10 +156,7 @@ function extractText(children: Array<Record<string, unknown>>): string {
 }
 
 function slugify(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/[^\w一-鿿]+/g, '-')
-    .replace(/^-|-$/g, '')
+  return githubSlug(text)
 }
 
 function extractAllRelations(documents: Map<string, ParsedDocument>): ProjectRelations {
