@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "web-eyes": {
+      "source": "/home/yams/my-awesome-skills/web-eyes",
+      "sourceType": "local",
+      "computedHash": "a22e9c715d53a4fc1e02be7247fc8ab28bb2198ee688ff761bbd0bb6fb6e04e3"
+    }
+  }
+}
